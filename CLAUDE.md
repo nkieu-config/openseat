@@ -22,7 +22,11 @@ pnpm dev                                   # web :3000, api :4000
 pnpm turbo run lint typecheck build test   # the CI quality gate
 pnpm --filter api test:e2e                 # integration tests (needs compose stack)
 pnpm --filter api db:migrate               # prisma migrate dev
+pnpm --filter api db:seed                  # reseed the demo event + demo users
+pnpm --filter api openapi:dump             # regenerate packages/contracts/openapi.json after API changes
 ```
+
+After changing any controller or DTO, run `openapi:dump` then `pnpm --filter @openseat/contracts build` so the web app's typed client stays in sync. The web app talks to the API through a same-origin Next.js rewrite (`/api/*`); see ADR 0004.
 
 Prisma 7 notes: connection URL lives in `apps/api/prisma.config.ts` (not in schema); the client requires the pg driver adapter; jest needs `NODE_OPTIONS=--experimental-vm-modules` for e2e (already baked into the script).
 

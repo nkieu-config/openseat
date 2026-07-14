@@ -8,6 +8,7 @@ build/
 coverage/
 .turbo/
 apps/api/src/generated/
+packages/contracts/src/api.ts
 
 .env
 .env.*

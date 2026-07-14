@@ -4,7 +4,7 @@ Open ticketing with real-time reserved seating — create an event, share the li
 
 **Live**: [openseat-ticket.vercel.app](https://openseat-ticket.vercel.app) · [API health](https://openseat-api.onrender.com/api/health) · [API docs](https://openseat-api.onrender.com/api/docs)
 
-> Status: **M0 — Foundation**. The monorepo, CI, local stack, and deployment are in place; product features land milestone by milestone (roadmap below).
+> Status: **M1 — Events & free tickets**. Create events, publish them, and issue QR e-tickets with guest checkout — inventory is race-proof by construction. Try it live: open the [demo event](https://openseat-ticket.vercel.app/events/bangkok-indie-fest) and claim a ticket, no sign-up needed.
 
 ## Why this project exists
 
@@ -57,7 +57,7 @@ pnpm --filter api test:e2e
 | Milestone | Ships |
 |---|---|
 | **M0 — Foundation** ✅ | Turborepo monorepo, Docker Compose stack, CI, deploy skeleton, ADRs |
-| M1 — Events & free tickets | Auth + guest checkout, event pages (SSR), atomic GA inventory, QR e-tickets by email |
+| **M1 — Events & free tickets** ✅ | Auth with rotating refresh tokens + guest checkout, SSR event pages, atomic GA inventory (100-buyer race test), QR e-tickets by email, OpenAPI-generated client, demo mode |
 | M2 — Reserved seating | Live seat maps (custom SVG), holds with countdown, Socket.IO + Redis, race-condition test suite |
 | M3 — Payments | PayMock (Go), order state machine, transactional outbox, idempotent checkout, webhook dedup |
 | M4 — Organizer dashboard | Sales analytics, occupancy heatmap, CSV export, read-only GraphQL, QR check-in |
