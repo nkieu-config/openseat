@@ -9,7 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard, OptionalJwtAuthGuard } from '../auth/guards';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -41,6 +41,7 @@ export class OrdersController {
 
   @Get('orders/:id')
   @UseGuards(OptionalJwtAuthGuard)
+  @ApiQuery({ name: 'token', required: false })
   getById(
     @Param('id') id: string,
     @CurrentUser() user: RequestUser | null,

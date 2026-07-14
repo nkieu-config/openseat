@@ -95,18 +95,30 @@ describe('Orders (e2e)', () => {
   it('never oversells under 100 concurrent orders for 40 tickets', async () => {
     const event = await createPublishedEvent(40);
     const ticketTypeId = event.ticketTypes[0].id;
+    const runId = Date.now();
 
-    const attempts = Array.from({ length: 100 }, (_, index) =>
-      request(app.getHttpServer())
-        .post(`/api/events/${event.id}/orders`)
-        .send({
-          items: [{ ticketTypeId, quantity: 1 }],
-          buyerEmail: `buyer-${index}@example.com`,
-          buyerName: `Buyer ${index}`,
-        })
-        .then((res) => res.status),
+    async function attemptOrder(index: number, retriesLeft: number): Promise<number> {
+      try {
+        const res = await request(app.getHttpServer())
+          .post(`/api/events/${event.id}/orders`)
+          .set('Idempotency-Key', `race-${runId}-${index}`)
+          .send({
+            items: [{ ticketTypeId, quantity: 1 }],
+            buyerEmail: `buyer-${index}@example.com`,
+            buyerName: `Buyer ${index}`,
+          });
+        return res.status;
+      } catch (error) {
+        if (retriesLeft === 0) {
+          throw error;
+        }
+        return attemptOrder(index, retriesLeft - 1);
+      }
+    }
+
+    const statuses = await Promise.all(
+      Array.from({ length: 100 }, (_, index) => attemptOrder(index, 2)),
     );
-    const statuses = await Promise.all(attempts);
 
     const succeeded = statuses.filter((status) => status === 201).length;
     const soldOut = statuses.filter((status) => status === 409).length;

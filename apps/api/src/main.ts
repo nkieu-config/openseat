@@ -1,17 +1,9 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
-
-export function buildSwaggerConfig() {
-  return new DocumentBuilder()
-    .setTitle('OpenSeat API')
-    .setDescription('REST API for the OpenSeat ticketing platform')
-    .setVersion('0.1.0')
-    .addBearerAuth()
-    .build();
-}
+import { buildSwaggerConfig } from './swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

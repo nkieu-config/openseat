@@ -11,11 +11,13 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "generate": "openapi-typescript openapi.json -o src/api.ts --default-non-nullable false",
+    "build": "pnpm generate && tsc -p tsconfig.json",
+    "typecheck": "pnpm generate && tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
     "@openseat/config": "workspace:*",
+    "openapi-typescript": "^7.13.0",
     "typescript": "^5.9.3"
   }
 }
