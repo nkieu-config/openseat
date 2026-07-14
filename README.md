@@ -2,7 +2,9 @@
 
 Open ticketing with real-time reserved seating — create an event, share the link, and let people pick their exact seat. Built to survive on-sale rushes without ever double-selling a seat.
 
-> Status: **M0 — Foundation**. The monorepo, CI, local stack, and deploy skeleton are in place; product features land milestone by milestone (roadmap below).
+**Live**: [openseat-ticket.vercel.app](https://openseat-ticket.vercel.app) · [API health](https://openseat-api.onrender.com/api/health) · [API docs](https://openseat-api.onrender.com/api/docs)
+
+> Status: **M0 — Foundation**. The monorepo, CI, local stack, and deployment are in place; product features land milestone by milestone (roadmap below).
 
 ## Why this project exists
 
