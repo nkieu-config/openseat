@@ -18,7 +18,7 @@ services:
       - key: APP_ORIGIN
         sync: false
       - key: APP_VERSION
-        value: m0
+        value: m1
       - key: REDIS_URL
         fromService:
           type: keyvalue

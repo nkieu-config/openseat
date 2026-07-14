@@ -17,4 +17,4 @@ jobs:
             echo "API_HEALTH_URL repository variable not set; skipping ping"
             exit 0
           fi
-          curl -fsS --max-time 30 "$API_HEALTH_URL"
+          curl -fsS --max-time 30 --retry 5 --retry-delay 15 --retry-all-errors "$API_HEALTH_URL"
