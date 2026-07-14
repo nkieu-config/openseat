@@ -9,13 +9,14 @@ import { PrismaService } from '../src/prisma/prisma.service';
 type AuthResponse = { user: { email: string }; accessToken: string };
 
 function refreshCookieOf(res: request.Response): string {
-  const header = res.headers['set-cookie'];
+  const headers = res.headers as Record<string, string[] | string | undefined>;
+  const header = headers['set-cookie'];
   const cookies = Array.isArray(header) ? header : [header ?? ''];
   const match = cookies.find((cookie) => cookie.startsWith('os_refresh='));
   if (!match) {
     throw new Error('missing os_refresh cookie');
   }
-  return match.split(';')[0]!;
+  return match.split(';')[0];
 }
 
 describe('Auth (e2e)', () => {
@@ -32,7 +33,9 @@ describe('Auth (e2e)', () => {
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
     app.use(cookieParser());
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
     prisma = app.get(PrismaService);
   });
