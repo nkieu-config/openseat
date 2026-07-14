@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: openseat-api
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter api db:generate && pnpm --filter api build && pnpm --filter api db:migrate:deploy
+    startCommand: node apps/api/dist/main.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: '22.18.0'
+      - key: DATABASE_URL
+        sync: false
+      - key: WEB_ORIGIN
+        sync: false
+      - key: APP_VERSION
+        value: m0
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: openseat-redis
+          property: connectionString
+
+  - type: keyvalue
+    name: openseat-redis
+    plan: free
+    ipAllowList: []
