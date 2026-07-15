@@ -5,7 +5,6 @@ import {
   ArrayMinSize,
   IsArray,
   IsDateString,
-
   IsInt,
   IsOptional,
   IsString,
@@ -28,7 +27,11 @@ export class CreateTicketTypeDto {
   @Max(100_000)
   quantity!: number;
 
-  @ApiProperty({ minimum: 0, maximum: 100_000_000, description: 'Price in satang; 0 = free' })
+  @ApiProperty({
+    minimum: 0,
+    maximum: 100_000_000,
+    description: 'Price in satang; 0 = free',
+  })
   @IsInt()
   @Min(0)
   @Max(100_000_000)

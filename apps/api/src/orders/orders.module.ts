@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
-import { NotificationsModule } from '../notifications/notifications.module';
-import { RealtimeModule } from '../realtime/realtime.module';
+import { OutboxModule } from '../outbox/outbox.module';
+import { PaymockClientModule } from '../paymock-client/paymock-client.module';
 import { OrdersController } from './orders.controller';
+import { OrdersQueueService } from './orders.queue';
 import { OrdersService } from './orders.service';
 
 @Module({
-  imports: [NotificationsModule, RealtimeModule],
+  imports: [OutboxModule, PaymockClientModule],
   controllers: [OrdersController],
-  providers: [OrdersService],
+  providers: [OrdersService, OrdersQueueService],
+  exports: [OrdersService],
 })
 export class OrdersModule {}

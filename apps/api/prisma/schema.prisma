@@ -140,6 +140,7 @@ model Hold {
   eventId   String   @map("event_id")
   seatId    String   @map("seat_id")
   holderKey String   @map("holder_key")
+  orderId   String?  @map("order_id")
   expiresAt DateTime @map("expires_at")
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -149,11 +150,13 @@ model Hold {
   @@unique([eventId, seatId])
   @@index([expiresAt])
   @@index([holderKey])
+  @@index([orderId])
   @@map("holds")
 }
 
 enum OrderStatus {
   pending
+  awaiting_payment
   paid
   expired
   canceled

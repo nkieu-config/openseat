@@ -7,7 +7,7 @@ import { RedisIoAdapter } from './realtime/redis-io.adapter';
 import { buildSwaggerConfig } from './swagger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.setGlobalPrefix('api');
   const redisUrl = process.env.REDIS_URL;
   if (redisUrl) {

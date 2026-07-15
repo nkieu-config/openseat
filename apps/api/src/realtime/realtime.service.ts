@@ -69,6 +69,10 @@ export class RealtimeService implements OnModuleDestroy {
     this.pending.clear();
   }
 
+  orderChanged(orderId: string, payload: { status: string }) {
+    this.server?.to(`order:${orderId}`).emit('order', payload);
+  }
+
   onModuleDestroy() {
     if (this.flushTimer) {
       clearInterval(this.flushTimer);

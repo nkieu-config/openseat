@@ -9,6 +9,9 @@ import { HealthModule } from './health/health.module';
 import { HoldsModule } from './holds/holds.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OrdersModule } from './orders/orders.module';
+import { OutboxModule } from './outbox/outbox.module';
+import { PaymentsModule } from './payments/payments.module';
+import { PaymockClientModule } from './paymock-client/paymock-client.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { QueuesModule } from './queues/queues.module';
 import { RealtimeModule } from './realtime/realtime.module';
@@ -36,6 +39,9 @@ import { SeatmapsModule } from './seatmaps/seatmaps.module';
     HoldsModule,
     SeatmapsModule,
     OrdersModule,
+    OutboxModule,
+    PaymockClientModule,
+    PaymentsModule,
     QueuesModule,
     NotificationsModule,
     HealthModule,

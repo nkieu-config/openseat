@@ -5,11 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
-import { MailService } from '../notifications/mail.service';
+import { OutboxService } from '../outbox/outbox.service';
+import { PaymockClientService } from '../paymock-client/paymock-client.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { RealtimeService } from '../realtime/realtime.service';
 import { Prisma } from '../generated/prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { OrdersQueueService } from './orders.queue';
 
 const ORDER_INCLUDE = {
   event: {
@@ -29,15 +30,23 @@ const ORDER_INCLUDE = {
     },
     orderBy: { createdAt: 'asc' as const },
   },
+  payment: { select: { status: true, checkoutUrl: true } },
 };
+
+const PAYMENT_WINDOW_MS = 15 * 60_000;
 
 @Injectable()
 export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mail: MailService,
-    private readonly realtime: RealtimeService,
+    private readonly outbox: OutboxService,
+    private readonly paymock: PaymockClientService,
+    private readonly ordersQueue: OrdersQueueService,
   ) {}
+
+  newQrToken(): string {
+    return randomBytes(16).toString('base64url');
+  }
 
   private async findByIdempotencyKey(eventId: string, idempotencyKey: string) {
     return this.prisma.order.findUnique({
@@ -118,12 +127,13 @@ export class OrdersService {
           total + item.quantity * typesById.get(item.ticketTypeId)!.priceSatang,
         0,
       ) + seats.reduce((total, seat) => total + seat.ticketType.priceSatang, 0);
-    if (totalSatang > 0) {
-      throw new BadRequestException('Paid tickets arrive in a later milestone');
-    }
+    const requiresPayment = totalSatang > 0;
 
     const buyerEmail = dto.buyerEmail.trim().toLowerCase();
     const buyerName = dto.buyerName.trim();
+    const expiresAt = requiresPayment
+      ? new Date(Date.now() + PAYMENT_WINDOW_MS)
+      : null;
 
     const seatGroups = new Map<
       string,
@@ -155,38 +165,16 @@ export class OrdersService {
           }
         }
 
-        if (seatIds.length > 0) {
-          const consumed = await tx.$queryRaw<{ seat_id: string }[]>`
-            DELETE FROM holds
-            WHERE event_id = ${eventId}
-              AND holder_key = ${holderKey}
-              AND expires_at > now()
-              AND seat_id = ANY(${seatIds})
-            RETURNING seat_id`;
-          if (consumed.length !== seatIds.length) {
-            throw new ConflictException({
-              message:
-                'Your hold on one or more seats has expired — pick them again',
-              code: 'HOLD_EXPIRED',
-            });
-          }
-          for (const [ticketTypeId, group] of seatGroups) {
-            await tx.ticketType.update({
-              where: { id: ticketTypeId },
-              data: { remaining: { decrement: group.quantity } },
-            });
-          }
-        }
-
         const order = await tx.order.create({
           data: {
             eventId,
             buyerUserId,
             buyerEmail,
             buyerName,
-            status: 'paid',
+            status: requiresPayment ? 'awaiting_payment' : 'paid',
             totalSatang,
             idempotencyKey,
+            expiresAt,
             guestToken: randomBytes(24).toString('base64url'),
             items: {
               create: [
@@ -206,29 +194,77 @@ export class OrdersService {
           },
         });
 
-        await tx.ticket.createMany({
-          data: [
-            ...gaItems.flatMap((item) =>
-              Array.from({ length: item.quantity }, () => ({
+        if (seatIds.length > 0) {
+          if (requiresPayment) {
+            const bound = await tx.$executeRaw`
+              UPDATE holds
+              SET order_id = ${order.id}, expires_at = ${expiresAt}
+              WHERE event_id = ${eventId}
+                AND holder_key = ${holderKey}
+                AND expires_at > now()
+                AND seat_id = ANY(${seatIds})`;
+            if (bound !== seatIds.length) {
+              throw new ConflictException({
+                message:
+                  'Your hold on one or more seats has expired — pick them again',
+                code: 'HOLD_EXPIRED',
+              });
+            }
+          } else {
+            const consumed = await tx.$queryRaw<{ seat_id: string }[]>`
+              DELETE FROM holds
+              WHERE event_id = ${eventId}
+                AND holder_key = ${holderKey}
+                AND expires_at > now()
+                AND seat_id = ANY(${seatIds})
+              RETURNING seat_id`;
+            if (consumed.length !== seatIds.length) {
+              throw new ConflictException({
+                message:
+                  'Your hold on one or more seats has expired — pick them again',
+                code: 'HOLD_EXPIRED',
+              });
+            }
+            for (const [ticketTypeId, group] of seatGroups) {
+              await tx.ticketType.update({
+                where: { id: ticketTypeId },
+                data: { remaining: { decrement: group.quantity } },
+              });
+            }
+          }
+        }
+
+        if (!requiresPayment) {
+          await tx.ticket.createMany({
+            data: [
+              ...gaItems.flatMap((item) =>
+                Array.from({ length: item.quantity }, () => ({
+                  orderId: order.id,
+                  eventId,
+                  ticketTypeId: item.ticketTypeId,
+                  attendeeEmail: buyerEmail,
+                  attendeeName: buyerName,
+                  qrToken: this.newQrToken(),
+                })),
+              ),
+              ...seats.map((seat) => ({
                 orderId: order.id,
                 eventId,
-                ticketTypeId: item.ticketTypeId,
+                ticketTypeId: seat.ticketTypeId,
+                seatId: seat.id,
                 attendeeEmail: buyerEmail,
                 attendeeName: buyerName,
-                qrToken: randomBytes(16).toString('base64url'),
+                qrToken: this.newQrToken(),
               })),
-            ),
-            ...seats.map((seat) => ({
-              orderId: order.id,
-              eventId,
-              ticketTypeId: seat.ticketTypeId,
-              seatId: seat.id,
-              attendeeEmail: buyerEmail,
-              attendeeName: buyerName,
-              qrToken: randomBytes(16).toString('base64url'),
-            })),
-          ],
-        });
+            ],
+          });
+          await this.outbox.writeInTx(tx, 'ticket.issued', {
+            orderId: order.id,
+          });
+          if (seatIds.length > 0) {
+            await this.outbox.writeInTx(tx, 'seats.sold', { eventId, seatIds });
+          }
+        }
 
         return order.id;
       });
@@ -249,31 +285,91 @@ export class OrdersService {
       throw error;
     }
 
-    if (seatIds.length > 0) {
-      this.realtime.seatsChanged(eventId, { sold: seatIds });
+    if (requiresPayment) {
+      try {
+        const order = await this.prisma.order.findUniqueOrThrow({
+          where: { id: orderId },
+        });
+        const intent = await this.paymock.createIntent({
+          orderId,
+          amountSatang: totalSatang,
+          guestToken: order.guestToken,
+        });
+        await this.prisma.payment.create({
+          data: {
+            orderId,
+            providerIntentId: intent.intentId,
+            checkoutUrl: intent.checkoutUrl,
+            amountSatang: totalSatang,
+          },
+        });
+        this.ordersQueue.enqueueExpiry(orderId, PAYMENT_WINDOW_MS);
+      } catch (error) {
+        await this.expireOrder(orderId, 'canceled');
+        throw error;
+      }
     }
+
+    this.outbox.nudge();
 
     const order = await this.prisma.order.findUniqueOrThrow({
       where: { id: orderId },
       include: ORDER_INCLUDE,
     });
-
-    await this.mail.sendOrderConfirmation({
-      to: order.buyerEmail,
-      buyerName: order.buyerName,
-      eventTitle: order.event.title,
-      eventVenue: order.event.venueName,
-      eventStartsAt: order.event.startsAt,
-      orderId: order.id,
-      guestToken: order.guestToken,
-      ticketNames: order.tickets.map((ticket) =>
-        ticket.seat
-          ? `${ticket.ticketType.name} — ${ticket.seat.section} ${ticket.seat.rowLabel}${ticket.seat.number}`
-          : ticket.ticketType.name,
-      ),
-    });
-
     return { order, replayed: false };
+  }
+
+  async releaseOrderInventoryInTx(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    finalStatus: 'expired' | 'canceled',
+  ): Promise<boolean> {
+    const updated = await tx.order.updateMany({
+      where: { id: orderId, status: 'awaiting_payment' },
+      data: { status: finalStatus },
+    });
+    if (updated.count === 0) {
+      return false;
+    }
+
+    const order = await tx.order.findUniqueOrThrow({
+      where: { id: orderId },
+      include: {
+        items: { include: { ticketType: { select: { kind: true } } } },
+      },
+    });
+    for (const item of order.items) {
+      if (item.ticketType.kind === 'ga') {
+        await tx.ticketType.update({
+          where: { id: item.ticketTypeId },
+          data: { remaining: { increment: item.quantity } },
+        });
+      }
+    }
+
+    const releasedHolds = await tx.$queryRaw<{ seat_id: string }[]>`
+      DELETE FROM holds WHERE order_id = ${orderId} RETURNING seat_id`;
+    if (releasedHolds.length > 0) {
+      await this.outbox.writeInTx(tx, 'seats.released', {
+        eventId: order.eventId,
+        seatIds: releasedHolds.map((hold) => hold.seat_id),
+      });
+    }
+    await this.outbox.writeInTx(tx, 'order.updated', {
+      orderId,
+      status: finalStatus,
+    });
+    return true;
+  }
+
+  async expireOrder(
+    orderId: string,
+    finalStatus: 'expired' | 'canceled' = 'expired',
+  ) {
+    await this.prisma.$transaction(async (tx) => {
+      await this.releaseOrderInventoryInTx(tx, orderId, finalStatus);
+    });
+    this.outbox.nudge();
   }
 
   async getById(

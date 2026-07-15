@@ -78,7 +78,9 @@ describe('Reserved seating (e2e)', () => {
       .post(`/api/events/${eventId}/seat-map`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
-        sections: [{ name: 'Front', rows: 2, cols: 5, tierName: 'Front zone' }],
+        sections: [
+          { name: 'Front', rows: 2, cols: 5, tierName: 'Front zone', priceSatang: 0 },
+        ],
       })
       .expect(201);
     await request(app.getHttpServer())
