@@ -1,5 +1,6 @@
 import createClient, { type Middleware } from "openapi-fetch";
 import type { AuthResponse, paths } from "@openseat/contracts";
+import { getAdmissionToken } from "./admission";
 
 let accessToken: string | null = null;
 
@@ -53,6 +54,25 @@ export const api = createClient<paths>({
   credentials: "include",
 });
 api.use(authMiddleware);
+
+const admissionMiddleware: Middleware = {
+  onRequest({ request }) {
+    if (isServer) {
+      return request;
+    }
+    const match = new URL(request.url).pathname.match(
+      /^\/api\/events\/([^/]+)\/(seat-map|holds|orders)/,
+    );
+    if (match) {
+      const token = getAdmissionToken(match[1]);
+      if (token) {
+        request.headers.set("X-Admission-Token", token);
+      }
+    }
+    return request;
+  },
+};
+api.use(admissionMiddleware);
 
 let refreshInFlight: Promise<AuthResponse | null> | null = null;
 

@@ -6,6 +6,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Separator } from "@/components/ui/separator";
 import { apiBaseUrl } from "@/lib/api";
 import { formatEventDate } from "@/lib/format";
+import { DropSale } from "./drop-sale";
 import { RsvpCard } from "./rsvp-card";
 import { SeatPicker } from "./seat-picker";
 
@@ -81,7 +82,9 @@ export default async function EventPage({ params }: PageProps) {
           </div>
         </article>
         <aside>
-          {gaTypes.length > 0 ? (
+          {event.dropMode ? (
+            <DropSale event={event} />
+          ) : gaTypes.length > 0 ? (
             <RsvpCard event={{ ...event, ticketTypes: gaTypes }} />
           ) : (
             <Card className="sticky top-20">
@@ -95,7 +98,7 @@ export default async function EventPage({ params }: PageProps) {
           )}
         </aside>
       </div>
-      {event.seatMap ? (
+      {!event.dropMode && event.seatMap ? (
         <section className="mt-10">
           <SeatPicker eventId={event.id} />
         </section>
