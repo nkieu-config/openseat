@@ -7,6 +7,7 @@ import {
 import { randomBytes } from 'crypto';
 import { MailService } from '../notifications/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import { Prisma } from '../generated/prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
 
@@ -22,7 +23,10 @@ const ORDER_INCLUDE = {
   },
   items: { include: { ticketType: { select: { id: true, name: true } } } },
   tickets: {
-    include: { ticketType: { select: { id: true, name: true } } },
+    include: {
+      ticketType: { select: { id: true, name: true } },
+      seat: { select: { section: true, rowLabel: true, number: true } },
+    },
     orderBy: { createdAt: 'asc' as const },
   },
 };
@@ -32,6 +36,7 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   private async findByIdempotencyKey(eventId: string, idempotencyKey: string) {
@@ -46,8 +51,20 @@ export class OrdersService {
     dto: CreateOrderDto;
     buyerUserId: string | null;
     idempotencyKey: string | null;
+    holderKey: string | null;
   }) {
-    const { eventId, dto, buyerUserId, idempotencyKey } = params;
+    const { eventId, dto, buyerUserId, idempotencyKey, holderKey } = params;
+    const gaItems = dto.items ?? [];
+    const seatIds = [...new Set(dto.seatIds ?? [])];
+
+    if (gaItems.length === 0 && seatIds.length === 0) {
+      throw new BadRequestException('Pick at least one ticket or seat');
+    }
+    if (seatIds.length > 0 && !holderKey) {
+      throw new BadRequestException(
+        'X-Hold-Key header is required for seat orders',
+      );
+    }
 
     if (idempotencyKey) {
       const existing = await this.findByIdempotencyKey(eventId, idempotencyKey);
@@ -66,9 +83,9 @@ export class OrdersService {
 
     const typesById = new Map(event.ticketTypes.map((type) => [type.id, type]));
     const seen = new Set<string>();
-    for (const item of dto.items) {
+    for (const item of gaItems) {
       const type = typesById.get(item.ticketTypeId);
-      if (!type) {
+      if (!type || type.kind !== 'ga') {
         throw new BadRequestException('Unknown ticket type for this event');
       }
       if (seen.has(item.ticketTypeId)) {
@@ -82,11 +99,25 @@ export class OrdersService {
       }
     }
 
-    const totalSatang = dto.items.reduce(
-      (total, item) =>
-        total + item.quantity * typesById.get(item.ticketTypeId)!.priceSatang,
-      0,
-    );
+    const seats =
+      seatIds.length > 0
+        ? await this.prisma.seat.findMany({
+            where: { id: { in: seatIds }, eventId },
+            include: {
+              ticketType: { select: { id: true, priceSatang: true } },
+            },
+          })
+        : [];
+    if (seats.length !== seatIds.length) {
+      throw new BadRequestException('Unknown seat for this event');
+    }
+
+    const totalSatang =
+      gaItems.reduce(
+        (total, item) =>
+          total + item.quantity * typesById.get(item.ticketTypeId)!.priceSatang,
+        0,
+      ) + seats.reduce((total, seat) => total + seat.ticketType.priceSatang, 0);
     if (totalSatang > 0) {
       throw new BadRequestException('Paid tickets arrive in a later milestone');
     }
@@ -94,10 +125,23 @@ export class OrdersService {
     const buyerEmail = dto.buyerEmail.trim().toLowerCase();
     const buyerName = dto.buyerName.trim();
 
+    const seatGroups = new Map<
+      string,
+      { quantity: number; unitPriceSatang: number }
+    >();
+    for (const seat of seats) {
+      const group = seatGroups.get(seat.ticketTypeId) ?? {
+        quantity: 0,
+        unitPriceSatang: seat.ticketType.priceSatang,
+      };
+      group.quantity += 1;
+      seatGroups.set(seat.ticketTypeId, group);
+    }
+
     let orderId: string;
     try {
       orderId = await this.prisma.$transaction(async (tx) => {
-        for (const item of dto.items) {
+        for (const item of gaItems) {
           const claimed = await tx.$executeRaw`
             UPDATE ticket_types
             SET remaining = remaining - ${item.quantity}, updated_at = now()
@@ -107,6 +151,29 @@ export class OrdersService {
               message: `"${typesById.get(item.ticketTypeId)!.name}" is sold out`,
               code: 'SOLD_OUT',
               ticketTypeId: item.ticketTypeId,
+            });
+          }
+        }
+
+        if (seatIds.length > 0) {
+          const consumed = await tx.$queryRaw<{ seat_id: string }[]>`
+            DELETE FROM holds
+            WHERE event_id = ${eventId}
+              AND holder_key = ${holderKey}
+              AND expires_at > now()
+              AND seat_id = ANY(${seatIds})
+            RETURNING seat_id`;
+          if (consumed.length !== seatIds.length) {
+            throw new ConflictException({
+              message:
+                'Your hold on one or more seats has expired — pick them again',
+              code: 'HOLD_EXPIRED',
+            });
+          }
+          for (const [ticketTypeId, group] of seatGroups) {
+            await tx.ticketType.update({
+              where: { id: ticketTypeId },
+              data: { remaining: { decrement: group.quantity } },
             });
           }
         }
@@ -122,26 +189,45 @@ export class OrdersService {
             idempotencyKey,
             guestToken: randomBytes(24).toString('base64url'),
             items: {
-              create: dto.items.map((item) => ({
-                ticketTypeId: item.ticketTypeId,
-                quantity: item.quantity,
-                unitPriceSatang: typesById.get(item.ticketTypeId)!.priceSatang,
-              })),
+              create: [
+                ...gaItems.map((item) => ({
+                  ticketTypeId: item.ticketTypeId,
+                  quantity: item.quantity,
+                  unitPriceSatang: typesById.get(item.ticketTypeId)!
+                    .priceSatang,
+                })),
+                ...[...seatGroups].map(([ticketTypeId, group]) => ({
+                  ticketTypeId,
+                  quantity: group.quantity,
+                  unitPriceSatang: group.unitPriceSatang,
+                })),
+              ],
             },
           },
         });
 
         await tx.ticket.createMany({
-          data: dto.items.flatMap((item) =>
-            Array.from({ length: item.quantity }, () => ({
+          data: [
+            ...gaItems.flatMap((item) =>
+              Array.from({ length: item.quantity }, () => ({
+                orderId: order.id,
+                eventId,
+                ticketTypeId: item.ticketTypeId,
+                attendeeEmail: buyerEmail,
+                attendeeName: buyerName,
+                qrToken: randomBytes(16).toString('base64url'),
+              })),
+            ),
+            ...seats.map((seat) => ({
               orderId: order.id,
               eventId,
-              ticketTypeId: item.ticketTypeId,
+              ticketTypeId: seat.ticketTypeId,
+              seatId: seat.id,
               attendeeEmail: buyerEmail,
               attendeeName: buyerName,
               qrToken: randomBytes(16).toString('base64url'),
             })),
-          ),
+          ],
         });
 
         return order.id;
@@ -163,6 +249,10 @@ export class OrdersService {
       throw error;
     }
 
+    if (seatIds.length > 0) {
+      this.realtime.seatsChanged(eventId, { sold: seatIds });
+    }
+
     const order = await this.prisma.order.findUniqueOrThrow({
       where: { id: orderId },
       include: ORDER_INCLUDE,
@@ -176,7 +266,11 @@ export class OrdersService {
       eventStartsAt: order.event.startsAt,
       orderId: order.id,
       guestToken: order.guestToken,
-      ticketNames: order.tickets.map((ticket) => ticket.ticketType.name),
+      ticketNames: order.tickets.map((ticket) =>
+        ticket.seat
+          ? `${ticket.ticketType.name} — ${ticket.seat.section} ${ticket.seat.rowLabel}${ticket.seat.number}`
+          : ticket.ticketType.name,
+      ),
     });
 
     return { order, replayed: false };
@@ -217,6 +311,7 @@ export class OrdersService {
           },
         },
         ticketType: { select: { id: true, name: true } },
+        seat: { select: { section: true, rowLabel: true, number: true } },
       },
       orderBy: { createdAt: 'desc' },
     });

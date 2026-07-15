@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -6,6 +6,7 @@ import {
   IsArray,
   IsEmail,
   IsInt,
+  IsOptional,
   IsString,
   Length,
   Max,
@@ -26,13 +27,25 @@ export class OrderItemInputDto {
 }
 
 export class CreateOrderDto {
-  @ApiProperty({ type: [OrderItemInputDto] })
+  @ApiPropertyOptional({ type: [OrderItemInputDto] })
+  @IsOptional()
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(5)
   @ValidateNested({ each: true })
   @Type(() => OrderItemInputDto)
-  items!: OrderItemInputDto[];
+  items?: OrderItemInputDto[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Seat ids currently held by the caller',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(8)
+  @IsString({ each: true })
+  seatIds?: string[];
 
   @ApiProperty({ example: 'ada@example.com' })
   @IsEmail()

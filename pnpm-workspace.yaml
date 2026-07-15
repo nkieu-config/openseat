@@ -2,10 +2,14 @@ packages:
   - apps/*
   - packages/*
 
+overrides:
+  ioredis: ^5.11.1
+
 allowBuilds:
   '@prisma/engines': true
   '@scarf/scarf': false
   argon2: true
+  msgpackr-extract: true
   prisma: true
   sharp: true
   unrs-resolver: true

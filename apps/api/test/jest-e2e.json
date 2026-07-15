@@ -4,6 +4,8 @@
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "setupFiles": ["dotenv/config"],
+  "maxWorkers": 1,
+  "forceExit": true,
   "moduleNameMapper": {
     "^(\\.{1,2}/.*)\\.js$": "$1"
   },

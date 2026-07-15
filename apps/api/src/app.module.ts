@@ -6,9 +6,13 @@ import { AuthModule } from './auth/auth.module';
 import { DemoModule } from './demo/demo.module';
 import { EventsModule } from './events/events.module';
 import { HealthModule } from './health/health.module';
+import { HoldsModule } from './holds/holds.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OrdersModule } from './orders/orders.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { QueuesModule } from './queues/queues.module';
+import { RealtimeModule } from './realtime/realtime.module';
+import { SeatmapsModule } from './seatmaps/seatmaps.module';
 
 @Module({
   imports: [
@@ -28,7 +32,11 @@ import { PrismaModule } from './prisma/prisma.module';
     AuthModule,
     DemoModule,
     EventsModule,
+    RealtimeModule,
+    HoldsModule,
+    SeatmapsModule,
     OrdersModule,
+    QueuesModule,
     NotificationsModule,
     HealthModule,
   ],

@@ -24,17 +24,20 @@ export class OrdersController {
   @HttpCode(201)
   @UseGuards(OptionalJwtAuthGuard)
   @ApiHeader({ name: 'Idempotency-Key', required: false })
+  @ApiHeader({ name: 'X-Hold-Key', required: false })
   async create(
     @Param('eventId') eventId: string,
     @Body() dto: CreateOrderDto,
     @CurrentUser() user: RequestUser | null,
     @Headers('idempotency-key') idempotencyKey?: string,
+    @Headers('x-hold-key') holderKey?: string,
   ) {
     const { order } = await this.orders.create({
       eventId,
       dto,
       buyerUserId: user?.id ?? null,
       idempotencyKey: idempotencyKey?.slice(0, 120) ?? null,
+      holderKey: holderKey ?? null,
     });
     return order;
   }
