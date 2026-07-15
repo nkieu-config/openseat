@@ -14,7 +14,10 @@ process.env.THROTTLE_LIMIT = '100000';
 
 const WEBHOOK_SECRET = 'paymock-dev-webhook-secret';
 
-function signedHeaders(body: string, timestamp = Math.floor(Date.now() / 1000)) {
+function signedHeaders(
+  body: string,
+  timestamp = Math.floor(Date.now() / 1000),
+) {
   const signature = createHmac('sha256', WEBHOOK_SECRET)
     .update(`${timestamp}.`)
     .update(body)
@@ -68,14 +71,20 @@ describe('Payments (e2e)', () => {
     app = moduleFixture.createNestApplication({ rawBody: true });
     app.setGlobalPrefix('api');
     app.use(cookieParser());
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
     await app.listen(0);
     prisma = app.get(PrismaService);
 
     const registerRes = await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: organizerEmail, password: 'organizer-pass', displayName: 'Organizer' })
+      .send({
+        email: organizerEmail,
+        password: 'organizer-pass',
+        displayName: 'Organizer',
+      })
       .expect(201);
     accessToken = (registerRes.body as { accessToken: string }).accessToken;
 
@@ -89,15 +98,26 @@ describe('Payments (e2e)', () => {
         ticketTypes: [{ name: 'Paid GA', quantity: 10, priceSatang: 50_000 }],
       })
       .expect(201);
-    const event = eventRes.body as { id: string; ticketTypes: { id: string }[] };
+    const event = eventRes.body as {
+      id: string;
+      ticketTypes: { id: string }[];
+    };
     eventId = event.id;
-    paidGaTypeId = event.ticketTypes[0]!.id;
+    paidGaTypeId = event.ticketTypes[0].id;
 
     await request(app.getHttpServer())
       .post(`/api/events/${eventId}/seat-map`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
-        sections: [{ name: 'Gold', rows: 1, cols: 5, tierName: 'Gold seats', priceSatang: 90_000 }],
+        sections: [
+          {
+            name: 'Gold',
+            rows: 1,
+            cols: 5,
+            tierName: 'Gold seats',
+            priceSatang: 90_000,
+          },
+        ],
       })
       .expect(201);
     await request(app.getHttpServer())
@@ -108,7 +128,9 @@ describe('Payments (e2e)', () => {
     const mapRes = await request(app.getHttpServer())
       .get(`/api/events/${eventId}/seat-map`)
       .expect(200);
-    seatIds = (mapRes.body as { seats: { id: string }[] }).seats.map((seat) => seat.id);
+    seatIds = (mapRes.body as { seats: { id: string }[] }).seats.map(
+      (seat) => seat.id,
+    );
   });
 
   afterAll(async () => {
@@ -137,7 +159,10 @@ describe('Payments (e2e)', () => {
     return res.body as OrderResponse;
   }
 
-  async function sendWebhook(event: Record<string, unknown>, expectStatus = 200) {
+  async function sendWebhook(
+    event: Record<string, unknown>,
+    expectStatus = 200,
+  ) {
     const body = JSON.stringify(event);
     return request(app.getHttpServer())
       .post('/api/payments/webhook')
@@ -148,7 +173,9 @@ describe('Payments (e2e)', () => {
   }
 
   it('walks a paid order from awaiting_payment to paid tickets via a signed webhook', async () => {
-    const before = await prisma.ticketType.findUniqueOrThrow({ where: { id: paidGaTypeId } });
+    const before = await prisma.ticketType.findUniqueOrThrow({
+      where: { id: paidGaTypeId },
+    });
     const order = await createPaidGaOrder();
 
     expect(order.status).toBe('awaiting_payment');
@@ -156,10 +183,14 @@ describe('Payments (e2e)', () => {
     expect(order.tickets).toHaveLength(0);
     expect(order.expiresAt).not.toBeNull();
 
-    const reserved = await prisma.ticketType.findUniqueOrThrow({ where: { id: paidGaTypeId } });
+    const reserved = await prisma.ticketType.findUniqueOrThrow({
+      where: { id: paidGaTypeId },
+    });
     expect(reserved.remaining).toBe(before.remaining - 1);
 
-    const payment = await prisma.payment.findUniqueOrThrow({ where: { orderId: order.id } });
+    const payment = await prisma.payment.findUniqueOrThrow({
+      where: { orderId: order.id },
+    });
     await sendWebhook({
       id: `evt_${order.id}`,
       type: 'payment.succeeded',
@@ -184,7 +215,9 @@ describe('Payments (e2e)', () => {
 
   it('treats a replayed webhook event as a duplicate and issues nothing twice', async () => {
     const order = await createPaidGaOrder();
-    const payment = await prisma.payment.findUniqueOrThrow({ where: { orderId: order.id } });
+    const payment = await prisma.payment.findUniqueOrThrow({
+      where: { orderId: order.id },
+    });
     const event = {
       id: `evt_dupe_${order.id}`,
       type: 'payment.succeeded',
@@ -221,7 +254,7 @@ describe('Payments (e2e)', () => {
 
   it('cancels a seated order and frees the seat when payment fails', async () => {
     const holderKey = 'paid-seat-holder-key';
-    const seatId = seatIds[0]!;
+    const seatId = seatIds[0];
     await request(app.getHttpServer())
       .post(`/api/events/${eventId}/holds`)
       .set('X-Hold-Key', holderKey)
@@ -231,7 +264,11 @@ describe('Payments (e2e)', () => {
     const orderRes = await request(app.getHttpServer())
       .post(`/api/events/${eventId}/orders`)
       .set('X-Hold-Key', holderKey)
-      .send({ seatIds: [seatId], buyerEmail: 'seatpayer@example.com', buyerName: 'Seat Payer' })
+      .send({
+        seatIds: [seatId],
+        buyerEmail: 'seatpayer@example.com',
+        buyerName: 'Seat Payer',
+      })
       .expect(201);
     const order = orderRes.body as OrderResponse;
     expect(order.status).toBe('awaiting_payment');
@@ -239,9 +276,13 @@ describe('Payments (e2e)', () => {
     const boundHold = await prisma.hold.findUniqueOrThrow({
       where: { eventId_seatId: { eventId, seatId } },
     });
-    expect(boundHold.expiresAt.getTime()).toBe(new Date(order.expiresAt!).getTime());
+    expect(boundHold.expiresAt.getTime()).toBe(
+      new Date(order.expiresAt!).getTime(),
+    );
 
-    const payment = await prisma.payment.findUniqueOrThrow({ where: { orderId: order.id } });
+    const payment = await prisma.payment.findUniqueOrThrow({
+      where: { orderId: order.id },
+    });
     await sendWebhook({
       id: `evt_fail_${order.id}`,
       type: 'payment.failed',
@@ -251,7 +292,9 @@ describe('Payments (e2e)', () => {
       createdAt: new Date().toISOString(),
     });
 
-    const canceled = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    const canceled = await prisma.order.findUniqueOrThrow({
+      where: { id: order.id },
+    });
     expect(canceled.status).toBe('canceled');
     const holdGone = await prisma.hold.count({ where: { seatId } });
     expect(holdGone).toBe(0);
@@ -260,15 +303,23 @@ describe('Payments (e2e)', () => {
   });
 
   it('expires an unpaid order, restores inventory, and ignores late success', async () => {
-    const before = await prisma.ticketType.findUniqueOrThrow({ where: { id: paidGaTypeId } });
+    const before = await prisma.ticketType.findUniqueOrThrow({
+      where: { id: paidGaTypeId },
+    });
     const order = await createPaidGaOrder();
-    const payment = await prisma.payment.findUniqueOrThrow({ where: { orderId: order.id } });
+    const payment = await prisma.payment.findUniqueOrThrow({
+      where: { orderId: order.id },
+    });
 
     await app.get(OrdersService).expireOrder(order.id);
 
-    const expired = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    const expired = await prisma.order.findUniqueOrThrow({
+      where: { id: order.id },
+    });
     expect(expired.status).toBe('expired');
-    const restored = await prisma.ticketType.findUniqueOrThrow({ where: { id: paidGaTypeId } });
+    const restored = await prisma.ticketType.findUniqueOrThrow({
+      where: { id: paidGaTypeId },
+    });
     expect(restored.remaining).toBe(before.remaining);
 
     await sendWebhook({
@@ -280,7 +331,9 @@ describe('Payments (e2e)', () => {
       createdAt: new Date().toISOString(),
     });
 
-    const stillExpired = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    const stillExpired = await prisma.order.findUniqueOrThrow({
+      where: { id: order.id },
+    });
     expect(stillExpired.status).toBe('expired');
     const tickets = await prisma.ticket.count({ where: { orderId: order.id } });
     expect(tickets).toBe(0);

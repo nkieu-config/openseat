@@ -79,7 +79,13 @@ describe('Reserved seating (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
         sections: [
-          { name: 'Front', rows: 2, cols: 5, tierName: 'Front zone', priceSatang: 0 },
+          {
+            name: 'Front',
+            rows: 2,
+            cols: 5,
+            tierName: 'Front zone',
+            priceSatang: 0,
+          },
         ],
       })
       .expect(201);

@@ -4,7 +4,7 @@ Open ticketing with real-time reserved seating — create an event, share the li
 
 **Live**: [openseat-ticket.vercel.app](https://openseat-ticket.vercel.app) · [API health](https://openseat-api.onrender.com/api/health) · [API docs](https://openseat-api.onrender.com/api/docs)
 
-> Status: **M2 — Reserved seating, live**. Pick your exact seat on a realtime map: holds last 7 minutes, everyone sees them appear and expire live, and the database itself refuses to sell a seat twice. Open the [demo event](https://openseat-ticket.vercel.app/events/bangkok-indie-fest) in two windows and watch your holds show up in the other one.
+> Status: **M3 — Payments, live**. Seats now have prices, and checkout runs through **PayMock** — a payment simulator built in Go that signs, retries, and deliberately duplicates every webhook. Hold a seat at the [demo event](https://openseat-ticket.vercel.app/events/bangkok-indie-fest), pay with fake money, and watch the order flip to paid in realtime. Failing the payment on purpose is encouraged.
 
 ## Why this project exists
 
@@ -59,7 +59,7 @@ pnpm --filter api test:e2e
 | **M0 — Foundation** ✅ | Turborepo monorepo, Docker Compose stack, CI, deploy skeleton, ADRs |
 | **M1 — Events & free tickets** ✅ | Auth with rotating refresh tokens + guest checkout, SSR event pages, atomic GA inventory (100-buyer race test), QR e-tickets by email, OpenAPI-generated client, demo mode |
 | **M2 — Reserved seating** ✅ | Live seat map (hand-built SVG with pan/zoom), 7-minute holds with countdown and takeover, Socket.IO + Redis fanout, BullMQ hold sweeper, 50-buyer seat race test, partial-unique DB backstop |
-| M3 — Payments | PayMock (Go), order state machine, transactional outbox, idempotent checkout, webhook dedup |
+| **M3 — Payments** ✅ | PayMock payment simulator in Go (signed + duplicated webhooks), awaiting_payment state machine with 15-minute expiry, transactional outbox for email/realtime effects, webhook dedup proven by e2e |
 | M4 — Organizer dashboard | Sales analytics, occupancy heatmap, CSV export, read-only GraphQL, QR check-in |
 | M5 — Waiting room | Go gate service, admission tokens, k6 load-test report, Simulate Crowd demo |
 | M6 — Seat-map editor | Drag-and-drop editor, i18n (EN/TH), demo video, AWS production architecture doc |

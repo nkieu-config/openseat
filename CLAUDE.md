@@ -10,7 +10,7 @@ Turborepo + pnpm workspaces:
 
 - `apps/web` — Next.js App Router, Tailwind v4, shadcn/ui (dark-first)
 - `apps/api` — NestJS modular monolith: REST + OpenAPI at `/api`, Swagger at `/api/docs`, Socket.IO realtime at namespace `/rt` (Redis adapter when `REDIS_URL` is set), BullMQ hold sweeper, Prisma 7 (client generated to `apps/api/src/generated/prisma`, gitignored). Seat holds are DB-authoritative; the browser talks to websockets directly at the API origin (`NEXT_PUBLIC_API_ORIGIN`), not through the Next.js proxy
-- `services/paymock`, `services/gate` — Go services (arrive in M3/M5)
+- `services/paymock` — Go payment simulator (intents, hosted pay page, HMAC webhooks sent twice on purpose); run locally with `go run ./services/paymock`, test with `go test ./services/paymock/...`. `services/gate` arrives in M5
 - `packages/contracts` — shared types/schemas; `packages/config` — shared tsconfig
 - `infra/` — docker-compose (Postgres 16, Redis 7, Mailpit), deploy config
 

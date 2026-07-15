@@ -22,6 +22,19 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo run lint typecheck build test
 
+  paymock:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/paymock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/paymock/go.mod
+      - run: go vet ./...
+      - run: go test ./...
+
   integration:
     runs-on: ubuntu-latest
     services:

@@ -1,3 +1,11 @@
+envVarGroups:
+  - name: paymock-shared
+    envVars:
+      - key: PAYMOCK_API_KEY
+        generateValue: true
+      - key: PAYMOCK_WEBHOOK_SECRET
+        generateValue: true
+
 services:
   - type: web
     name: openseat-api
@@ -24,6 +32,24 @@ services:
           type: keyvalue
           name: openseat-redis
           property: connectionString
+      - key: PAYMOCK_URL
+        value: https://openseat-paymock.onrender.com
+      - key: API_PUBLIC_URL
+        value: https://openseat-api.onrender.com
+      - fromGroup: paymock-shared
+
+  - type: web
+    name: openseat-paymock
+    runtime: go
+    plan: free
+    rootDir: services/paymock
+    buildCommand: go build -o paymock .
+    startCommand: ./paymock
+    healthCheckPath: /health
+    envVars:
+      - key: PAYMOCK_PUBLIC_URL
+        value: https://openseat-paymock.onrender.com
+      - fromGroup: paymock-shared
 
   - type: keyvalue
     name: openseat-redis
