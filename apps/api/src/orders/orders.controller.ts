@@ -23,8 +23,8 @@ export class OrdersController {
   @Post('events/:eventId/orders')
   @HttpCode(201)
   @UseGuards(OptionalJwtAuthGuard)
-  @ApiHeader({ name: 'Idempotency-Key', required: false })
-  @ApiHeader({ name: 'X-Hold-Key', required: false })
+  @ApiHeader({ name: 'idempotency-key', required: false })
+  @ApiHeader({ name: 'x-hold-key', required: false })
   async create(
     @Param('eventId') eventId: string,
     @Body() dto: CreateOrderDto,

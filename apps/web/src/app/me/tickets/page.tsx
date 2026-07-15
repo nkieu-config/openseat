@@ -51,7 +51,11 @@ export default function MyTicketsPage() {
             <TicketCard
               key={ticket.id}
               title={ticket.event.title}
-              subtitle={`${ticket.ticketType.name} · ${formatEventDate(ticket.event.startsAt)} · ${ticket.event.venueName}`}
+              subtitle={`${
+                ticket.seat
+                  ? `${ticket.seat.section} ${ticket.seat.rowLabel}${ticket.seat.number} · `
+                  : ""
+              }${ticket.ticketType.name} · ${formatEventDate(ticket.event.startsAt)} · ${ticket.event.venueName}`}
               qrToken={ticket.qrToken}
               status={ticket.status}
               qrSize={120}

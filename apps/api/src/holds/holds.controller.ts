@@ -9,11 +9,12 @@ import {
   Param,
   Post,
 } from '@nestjs/common';
-import { ApiHeader, ApiTags } from '@nestjs/swagger';
+import { ApiHeader, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { IsString, Length } from 'class-validator';
 import { HoldsService } from './holds.service';
 
 class AcquireHoldDto {
+  @ApiProperty()
   @IsString()
   @Length(1, 64)
   seatId!: string;
@@ -35,7 +36,7 @@ export class HoldsController {
 
   @Post()
   @HttpCode(201)
-  @ApiHeader({ name: 'X-Hold-Key', required: true })
+  @ApiHeader({ name: 'x-hold-key', required: true })
   acquire(
     @Param('eventId') eventId: string,
     @Body() dto: AcquireHoldDto,
@@ -45,7 +46,7 @@ export class HoldsController {
   }
 
   @Get('mine')
-  @ApiHeader({ name: 'X-Hold-Key', required: true })
+  @ApiHeader({ name: 'x-hold-key', required: true })
   listMine(
     @Param('eventId') eventId: string,
     @Headers('x-hold-key') holderKey?: string,
@@ -55,7 +56,7 @@ export class HoldsController {
 
   @Delete(':seatId')
   @HttpCode(204)
-  @ApiHeader({ name: 'X-Hold-Key', required: true })
+  @ApiHeader({ name: 'x-hold-key', required: true })
   async release(
     @Param('eventId') eventId: string,
     @Param('seatId') seatId: string,

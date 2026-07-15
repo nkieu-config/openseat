@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { api, apiErrorMessage } from "@/lib/api";
 import { formatEventDate } from "@/lib/format";
+import { AddSeatMap } from "./add-seat-map";
 
 export default function ManageEventPage() {
   const params = useParams<{ id: string }>();
@@ -121,6 +122,7 @@ export default function ManageEventPage() {
               <Badge variant={event.status === "published" ? "default" : "secondary"}>
                 {event.status}
               </Badge>
+              {event.seatMap ? <Badge variant="secondary">seated</Badge> : null}
               {event.isDemo ? <Badge variant="outline">demo</Badge> : null}
             </div>
             <h1 className="text-3xl font-semibold tracking-tight">{event.title}</h1>
@@ -196,6 +198,9 @@ export default function ManageEventPage() {
             })}
           </CardContent>
         </Card>
+        {!event.seatMap ? (
+          <AddSeatMap eventId={event.id} onCreated={() => setReloadKey((key) => key + 1)} />
+        ) : null}
       </div>
     </main>
   );

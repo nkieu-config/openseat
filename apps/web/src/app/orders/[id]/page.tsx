@@ -105,8 +105,16 @@ function OrderView() {
         {order.tickets.map((ticket, index) => (
           <TicketCard
             key={ticket.id}
-            title={`${ticket.ticketType.name} · #${index + 1}`}
-            subtitle={ticket.attendeeName}
+            title={
+              ticket.seat
+                ? `${ticket.seat.section} ${ticket.seat.rowLabel}${ticket.seat.number}`
+                : `${ticket.ticketType.name} · #${index + 1}`
+            }
+            subtitle={
+              ticket.seat
+                ? `${ticket.ticketType.name} · ${ticket.attendeeName}`
+                : ticket.attendeeName
+            }
             qrToken={ticket.qrToken}
           />
         ))}

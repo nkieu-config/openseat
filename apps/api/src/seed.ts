@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from './generated/prisma/client';
 
@@ -8,6 +8,12 @@ const prisma = new PrismaClient({
 });
 
 const DEMO_EVENT_SLUG = 'bangkok-indie-fest';
+const ROW_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+const SEAT_SECTIONS = [
+  { name: 'Front', rows: 4, cols: 10, tierName: 'Front seats', soldEvery: 5 },
+  { name: 'Main', rows: 6, cols: 12, tierName: 'Main seats', soldEvery: 7 },
+];
 
 async function upsertDemoUser(email: string, displayName: string) {
   return prisma.user.upsert({
@@ -17,7 +23,7 @@ async function upsertDemoUser(email: string, displayName: string) {
   });
 }
 
-async function seedTickets(input: {
+async function seedGaTickets(input: {
   eventId: string;
   ticketTypeId: string;
   count: number;
@@ -59,6 +65,112 @@ async function seedTickets(input: {
   }
 }
 
+async function seedSeatMap(eventId: string): Promise<number> {
+  const maxCols = Math.max(...SEAT_SECTIONS.map((section) => section.cols));
+  const seatMap = await prisma.seatMap.create({
+    data: { eventId, template: 'theater', meta: {} },
+  });
+
+  let yCursor = 0;
+  let totalSold = 0;
+  const sectionMeta: {
+    name: string;
+    yStart: number;
+    rows: number;
+    cols: number;
+    xOffset: number;
+  }[] = [];
+
+  for (const section of SEAT_SECTIONS) {
+    const xOffset = Math.floor((maxCols - section.cols) / 2);
+    const capacity = section.rows * section.cols;
+    const tier = await prisma.ticketType.create({
+      data: {
+        eventId,
+        kind: 'seated',
+        name: section.tierName,
+        priceSatang: 0,
+        quantity: capacity,
+        remaining: capacity,
+        maxPerOrder: 8,
+      },
+    });
+
+    const seats = Array.from({ length: section.rows }, (_, rowIndex) =>
+      Array.from({ length: section.cols }, (_, colIndex) => ({
+        id: randomUUID(),
+        seatMapId: seatMap.id,
+        eventId,
+        ticketTypeId: tier.id,
+        section: section.name,
+        rowLabel: ROW_LETTERS[rowIndex % ROW_LETTERS.length],
+        number: colIndex + 1,
+        x: xOffset + colIndex,
+        y: yCursor + rowIndex,
+      })),
+    ).flat();
+    await prisma.seat.createMany({ data: seats });
+
+    const soldSeats = seats.filter(
+      (_, index) => index % section.soldEvery === 2,
+    );
+    for (let chunk = 0; chunk < soldSeats.length; chunk += 2) {
+      const orderSeats = soldSeats.slice(chunk, chunk + 2);
+      const buyerEmail = `demo-seated-${section.name.toLowerCase()}-${chunk}@example.com`;
+      const buyerName = `Seated Fan ${chunk + 1}`;
+      await prisma.order.create({
+        data: {
+          eventId,
+          buyerEmail,
+          buyerName,
+          status: 'paid',
+          totalSatang: 0,
+          guestToken: randomBytes(24).toString('base64url'),
+          items: {
+            create: [
+              {
+                ticketTypeId: tier.id,
+                quantity: orderSeats.length,
+                unitPriceSatang: 0,
+              },
+            ],
+          },
+          tickets: {
+            create: orderSeats.map((seat) => ({
+              eventId,
+              ticketTypeId: tier.id,
+              seatId: seat.id,
+              attendeeEmail: buyerEmail,
+              attendeeName: buyerName,
+              qrToken: randomBytes(16).toString('base64url'),
+            })),
+          },
+        },
+      });
+    }
+    await prisma.ticketType.update({
+      where: { id: tier.id },
+      data: { remaining: capacity - soldSeats.length },
+    });
+    totalSold += soldSeats.length;
+
+    sectionMeta.push({
+      name: section.name,
+      yStart: yCursor,
+      rows: section.rows,
+      cols: section.cols,
+      xOffset,
+    });
+    yCursor += section.rows + 1;
+  }
+
+  await prisma.seatMap.update({
+    where: { id: seatMap.id },
+    data: { meta: { maxCols, totalRows: yCursor - 1, sections: sectionMeta } },
+  });
+  return totalSold;
+}
+
 async function main() {
   const organizer = await upsertDemoUser(
     'demo-organizer@openseat.dev',
@@ -87,7 +199,7 @@ async function main() {
       description: [
         'One night, twelve independent bands, zero ticket fees.',
         '',
-        'Bangkok Indie Fest is the demo event for OpenSeat. Claim a free ticket to see the full flow: pick a ticket type, check out as a guest, and get a QR e-ticket by email. This event reseeds on every deploy, so grab as many tickets as you like.',
+        'Bangkok Indie Fest is the demo event for OpenSeat. Claim a standing ticket, or pick an exact seat on the live map — open this page in two windows and watch holds appear in real time. This event reseeds on every deploy, so grab as many tickets as you like.',
       ].join('\n'),
       venueName: 'Voice Space, Bangkok',
       startsAt,
@@ -109,13 +221,6 @@ async function main() {
             priceSatang: 0,
             maxPerOrder: 4,
           },
-          {
-            name: 'Front zone',
-            quantity: 40,
-            remaining: 40,
-            priceSatang: 0,
-            maxPerOrder: 2,
-          },
         ],
       },
     },
@@ -128,32 +233,21 @@ async function main() {
   const generalAdmission = event.ticketTypes.find(
     (type) => type.name === 'General admission',
   )!;
-  const frontZone = event.ticketTypes.find(
-    (type) => type.name === 'Front zone',
-  )!;
 
-  await seedTickets({
+  await seedGaTickets({
     eventId: event.id,
     ticketTypeId: earlyBird.id,
     count: 20,
     perOrder: 2,
     label: 'early',
   });
-  await seedTickets({
+  await seedGaTickets({
     eventId: event.id,
     ticketTypeId: generalAdmission.id,
     count: 24,
     perOrder: 3,
     label: 'ga',
   });
-  await seedTickets({
-    eventId: event.id,
-    ticketTypeId: frontZone.id,
-    count: 6,
-    perOrder: 2,
-    label: 'front',
-  });
-
   await prisma.ticketType.update({
     where: { id: earlyBird.id },
     data: { remaining: 0 },
@@ -162,13 +256,11 @@ async function main() {
     where: { id: generalAdmission.id },
     data: { remaining: 200 - 24 },
   });
-  await prisma.ticketType.update({
-    where: { id: frontZone.id },
-    data: { remaining: 40 - 6 },
-  });
+
+  const seatedSold = await seedSeatMap(event.id);
 
   process.stdout.write(
-    `Seeded demo event ${event.slug} with 50 issued tickets\n`,
+    `Seeded demo event ${event.slug}: 44 GA tickets + ${seatedSold} seated tickets\n`,
   );
 }
 

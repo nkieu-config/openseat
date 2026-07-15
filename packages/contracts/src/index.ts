@@ -16,6 +16,7 @@ export type AuthResponse = {
 
 export type TicketTypePublic = {
   id: string;
+  kind: 'ga' | 'seated';
   name: string;
   priceSatang: number;
   quantity: number;
@@ -39,13 +40,53 @@ export type EventDetail = EventSummary & {
   isDemo: boolean;
   organizer: { id: string; displayName: string };
   ticketTypes: TicketTypePublic[];
+  seatMap: { id: string } | null;
 };
 
 export type MyEvent = Omit<EventDetail, 'organizer'> & {
   ticketsIssued: number;
 };
 
+export type SeatStatus = 'available' | 'held' | 'sold';
+
+export type SeatInfo = {
+  id: string;
+  section: string;
+  rowLabel: string;
+  number: number;
+  x: number;
+  y: number;
+  ticketTypeId: string;
+  status: SeatStatus;
+  mine: boolean;
+  expiresAt?: string;
+};
+
+export type SeatMapSectionMeta = {
+  name: string;
+  yStart: number;
+  rows: number;
+  cols: number;
+  xOffset: number;
+};
+
+export type SeatMapData = {
+  id: string;
+  template: string;
+  meta: { maxCols: number; totalRows: number; sections: SeatMapSectionMeta[] };
+  tiers: { id: string; name: string; priceSatang: number; remaining: number }[];
+  seats: SeatInfo[];
+};
+
+export type SeatsChangedMessage = {
+  held: string[];
+  released: string[];
+  sold: string[];
+};
+
 export type TicketStatus = 'issued' | 'checked_in' | 'void';
+
+export type SeatLabel = { section: string; rowLabel: string; number: number };
 
 export type OrderTicket = {
   id: string;
@@ -53,6 +94,7 @@ export type OrderTicket = {
   status: TicketStatus;
   attendeeName: string;
   ticketType: { id: string; name: string };
+  seat: SeatLabel | null;
 };
 
 export type OrderDetail = {
@@ -75,6 +117,7 @@ export type MyTicket = {
   createdAt: string;
   event: EventSummary;
   ticketType: { id: string; name: string };
+  seat: SeatLabel | null;
 };
 
 export type HealthResponse = {

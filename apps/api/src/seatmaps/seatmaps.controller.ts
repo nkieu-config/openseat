@@ -80,7 +80,7 @@ export class SeatmapsController {
   }
 
   @Get()
-  @ApiHeader({ name: 'X-Hold-Key', required: false })
+  @ApiHeader({ name: 'x-hold-key', required: false })
   get(
     @Param('eventId') eventId: string,
     @Headers('x-hold-key') holderKey?: string,

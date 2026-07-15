@@ -25,6 +25,9 @@ const PUBLIC_EVENT_INCLUDE = {
   organizer: {
     select: { id: true, displayName: true },
   },
+  seatMap: {
+    select: { id: true },
+  },
 };
 
 @Injectable()
@@ -72,6 +75,7 @@ export class EventsService {
       orderBy: { createdAt: 'desc' },
       include: {
         ticketTypes: { orderBy: { createdAt: 'asc' } },
+        seatMap: { select: { id: true } },
         _count: { select: { tickets: true } },
       },
     });

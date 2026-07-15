@@ -341,6 +341,184 @@
         ]
       }
     },
+    "/api/events/{eventId}/holds": {
+      "post": {
+        "operationId": "HoldsController_acquire",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-hold-key",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcquireHoldDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "holds"
+        ]
+      }
+    },
+    "/api/events/{eventId}/holds/mine": {
+      "get": {
+        "operationId": "HoldsController_listMine",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-hold-key",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "holds"
+        ]
+      }
+    },
+    "/api/events/{eventId}/holds/{seatId}": {
+      "delete": {
+        "operationId": "HoldsController_release",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "seatId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-hold-key",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "holds"
+        ]
+      }
+    },
+    "/api/events/{eventId}/seat-map": {
+      "post": {
+        "operationId": "SeatmapsController_create",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSeatMapDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "seat-maps"
+        ]
+      },
+      "get": {
+        "operationId": "SeatmapsController_get",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-hold-key",
+            "required": false,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "seat-maps"
+        ]
+      }
+    },
     "/api/events/{eventId}/orders": {
       "post": {
         "operationId": "OrdersController_create",
@@ -355,16 +533,16 @@
           },
           {
             "name": "idempotency-key",
-            "required": true,
+            "required": false,
             "in": "header",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "Idempotency-Key",
-            "in": "header",
+            "name": "x-hold-key",
             "required": false,
+            "in": "header",
             "schema": {
               "type": "string"
             }
@@ -633,6 +811,60 @@
           }
         }
       },
+      "AcquireHoldDto": {
+        "type": "object",
+        "properties": {
+          "seatId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seatId"
+        ]
+      },
+      "SeatMapSectionDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Front"
+          },
+          "rows": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 26
+          },
+          "cols": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 30
+          },
+          "tierName": {
+            "type": "string",
+            "example": "Front zone"
+          }
+        },
+        "required": [
+          "name",
+          "rows",
+          "cols",
+          "tierName"
+        ]
+      },
+      "CreateSeatMapDto": {
+        "type": "object",
+        "properties": {
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeatMapSectionDto"
+            }
+          }
+        },
+        "required": [
+          "sections"
+        ]
+      },
       "OrderItemInputDto": {
         "type": "object",
         "properties": {
@@ -659,6 +891,13 @@
               "$ref": "#/components/schemas/OrderItemInputDto"
             }
           },
+          "seatIds": {
+            "description": "Seat ids currently held by the caller",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "buyerEmail": {
             "type": "string",
             "example": "ada@example.com"
@@ -669,7 +908,6 @@
           }
         },
         "required": [
-          "items",
           "buyerEmail",
           "buyerName"
         ]

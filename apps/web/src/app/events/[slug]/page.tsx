@@ -2,10 +2,12 @@ import type { EventDetail } from "@openseat/contracts";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { apiBaseUrl } from "@/lib/api";
 import { formatEventDate } from "@/lib/format";
 import { RsvpCard } from "./rsvp-card";
+import { SeatPicker } from "./seat-picker";
 
 type PageProps = { params: Promise<{ slug: string }> };
 
@@ -43,6 +45,7 @@ export default async function EventPage({ params }: PageProps) {
   }
 
   const soldOut = event.ticketTypes.every((type) => type.remaining === 0);
+  const gaTypes = event.ticketTypes.filter((type) => type.kind === "ga");
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-12">
@@ -78,9 +81,25 @@ export default async function EventPage({ params }: PageProps) {
           </div>
         </article>
         <aside>
-          <RsvpCard event={event} />
+          {gaTypes.length > 0 ? (
+            <RsvpCard event={{ ...event, ticketTypes: gaTypes }} />
+          ) : (
+            <Card className="sticky top-20">
+              <CardHeader>
+                <CardTitle className="text-lg">Reserved seating</CardTitle>
+                <CardDescription>
+                  This event uses a live seat map — pick your exact seat below.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
         </aside>
       </div>
+      {event.seatMap ? (
+        <section className="mt-10">
+          <SeatPicker eventId={event.id} />
+        </section>
+      ) : null}
     </main>
   );
 }
