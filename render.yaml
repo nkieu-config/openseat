@@ -5,6 +5,10 @@ envVarGroups:
         generateValue: true
       - key: PAYMOCK_WEBHOOK_SECRET
         generateValue: true
+  - name: gate-shared
+    envVars:
+      - key: GATE_ADMISSION_SECRET
+        generateValue: true
 
 services:
   - type: web
@@ -26,7 +30,7 @@ services:
       - key: APP_ORIGIN
         sync: false
       - key: APP_VERSION
-        value: m4
+        value: m5
       - key: REDIS_URL
         fromService:
           type: keyvalue
@@ -37,6 +41,7 @@ services:
       - key: API_PUBLIC_URL
         value: https://openseat-api.onrender.com
       - fromGroup: paymock-shared
+      - fromGroup: gate-shared
 
   - type: web
     name: openseat-paymock
@@ -50,6 +55,28 @@ services:
       - key: PAYMOCK_PUBLIC_URL
         value: https://openseat-paymock.onrender.com
       - fromGroup: paymock-shared
+
+  - type: web
+    name: openseat-gate
+    runtime: go
+    plan: free
+    rootDir: services/gate
+    buildCommand: go build -o gate .
+    startCommand: ./gate
+    healthCheckPath: /health
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: openseat-redis
+          property: connectionString
+      - key: ADMIT_BATCH
+        value: '8'
+      - key: ADMIT_INTERVAL_MS
+        value: '1000'
+      - key: ADMISSION_TTL_SECONDS
+        value: '600'
+      - fromGroup: gate-shared
 
   - type: keyvalue
     name: openseat-redis

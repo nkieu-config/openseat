@@ -35,6 +35,19 @@ jobs:
       - run: go vet ./...
       - run: go test ./...
 
+  gate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/gate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/gate/go.mod
+      - run: go vet ./...
+      - run: go test ./...
+
   integration:
     runs-on: ubuntu-latest
     services:
