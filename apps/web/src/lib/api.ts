@@ -10,7 +10,10 @@ export function setAccessToken(token: string | null) {
 const isServer = typeof window === "undefined";
 
 export const apiBaseUrl = isServer
-  ? (process.env.API_PROXY_TARGET ?? "http://localhost:4000")
+  ? (process.env.API_PROXY_TARGET ??
+    (process.env.NODE_ENV === "production"
+      ? "https://openseat-api.onrender.com"
+      : "http://localhost:4000"))
   : "";
 
 const authMiddleware: Middleware = {
