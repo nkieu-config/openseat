@@ -6,6 +6,7 @@ overrides:
   ioredis: ^5.11.1
 
 allowBuilds:
+  '@apollo/protobufjs': false
   '@prisma/engines': true
   '@scarf/scarf': false
   argon2: true
@@ -25,3 +26,7 @@ onlyBuiltDependencies:
   - prisma
   - sharp
   - unrs-resolver
+
+ignoredBuiltDependencies:
+  - '@apollo/protobufjs'
+  - '@scarf/scarf'

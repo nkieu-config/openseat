@@ -29,6 +29,20 @@ const SEAT_SECTIONS = [
   },
 ];
 
+const SALE_WINDOW_DAYS = 16;
+let orderSequence = 0;
+
+function backdatedSaleDate(): Date {
+  const seq = orderSequence++;
+  const spread = ((seq * 2654435761) % 997) / 997;
+  const dayFromNow = Math.floor((1 - Math.sqrt(spread)) * SALE_WINDOW_DAYS);
+  const secondOfDay = (seq * 40503) % 86400;
+  const day = new Date();
+  day.setUTCHours(0, 0, 0, 0);
+  day.setUTCDate(day.getUTCDate() - dayFromNow);
+  return new Date(day.getTime() + secondOfDay * 1000);
+}
+
 async function upsertDemoUser(email: string, displayName: string) {
   return prisma.user.upsert({
     where: { email },
@@ -50,6 +64,7 @@ async function seedGaTickets(input: {
     const quantity = Math.min(input.perOrder, remainingToIssue);
     const buyerEmail = `demo-${input.label}-${orderIndex}@example.com`;
     const buyerName = `Demo Fan ${orderIndex + 1}`;
+    const createdAt = backdatedSaleDate();
     await prisma.order.create({
       data: {
         eventId: input.eventId,
@@ -58,6 +73,7 @@ async function seedGaTickets(input: {
         status: 'paid',
         totalSatang: 0,
         guestToken: randomBytes(24).toString('base64url'),
+        createdAt,
         items: {
           create: [
             { ticketTypeId: input.ticketTypeId, quantity, unitPriceSatang: 0 },
@@ -70,6 +86,7 @@ async function seedGaTickets(input: {
             attendeeEmail: buyerEmail,
             attendeeName: buyerName,
             qrToken: randomBytes(16).toString('base64url'),
+            createdAt,
           })),
         },
       },
@@ -132,6 +149,7 @@ async function seedSeatMap(eventId: string): Promise<number> {
       const orderSeats = soldSeats.slice(chunk, chunk + 2);
       const buyerEmail = `demo-seated-${section.name.toLowerCase()}-${chunk}@example.com`;
       const buyerName = `Seated Fan ${chunk + 1}`;
+      const createdAt = backdatedSaleDate();
       await prisma.order.create({
         data: {
           eventId,
@@ -140,6 +158,7 @@ async function seedSeatMap(eventId: string): Promise<number> {
           status: 'paid',
           totalSatang: orderSeats.length * section.priceSatang,
           guestToken: randomBytes(24).toString('base64url'),
+          createdAt,
           items: {
             create: [
               {
@@ -157,6 +176,7 @@ async function seedSeatMap(eventId: string): Promise<number> {
               attendeeEmail: buyerEmail,
               attendeeName: buyerName,
               qrToken: randomBytes(16).toString('base64url'),
+              createdAt,
             })),
           },
         },

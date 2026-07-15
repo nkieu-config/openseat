@@ -1,0 +1,84 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Attendee {
+  checkedInAt: DateTime
+  email: String!
+  name: String!
+  seat: String
+  status: String!
+  ticketId: ID!
+  ticketType: String!
+}
+
+type DashboardTotals {
+  capacity: Int!
+  grossSatang: Float!
+  liveHolds: Int!
+  paidOrders: Int!
+  pendingOrders: Int!
+  sellThroughBp: Int!
+  ticketsCheckedIn: Int!
+  ticketsSold: Int!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type EventCard {
+  capacity: Int!
+  grossSatang: Float!
+  id: ID!
+  isDemo: Boolean!
+  seated: Boolean!
+  slug: String!
+  startsAt: DateTime!
+  status: String!
+  ticketsCheckedIn: Int!
+  ticketsSold: Int!
+  title: String!
+  venueName: String!
+}
+
+type EventDashboard {
+  event: EventCard!
+  sections: [SectionOccupancy!]!
+  tiers: [TierStat!]!
+  timeline: [TimelineBucket!]!
+  totals: DashboardTotals!
+}
+
+type Query {
+  eventAttendees(eventId: ID!, limit: Int = 500): [Attendee!]!
+  eventDashboard(eventId: ID!): EventDashboard!
+  organizerEvents: [EventCard!]!
+}
+
+type SectionOccupancy {
+  available: Int!
+  capacity: Int!
+  held: Int!
+  name: String!
+  sold: Int!
+}
+
+type TierStat {
+  grossSatang: Float!
+  id: ID!
+  kind: String!
+  name: String!
+  priceSatang: Float!
+  quantity: Int!
+  remaining: Int!
+  sold: Int!
+}
+
+type TimelineBucket {
+  day: DateTime!
+  grossSatang: Float!
+  orders: Int!
+  ticketsSold: Int!
+}

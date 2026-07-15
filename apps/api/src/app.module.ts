@@ -1,8 +1,14 @@
+import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
+import { GraphQLModule } from '@nestjs/graphql';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
+import { CheckinModule } from './checkin/checkin.module';
+import { GqlThrottlerGuard } from './common/gql-throttler.guard';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { DemoModule } from './demo/demo.module';
 import { EventsModule } from './events/events.module';
 import { HealthModule } from './health/health.module';
@@ -31,10 +37,21 @@ import { SeatmapsModule } from './seatmaps/seatmaps.module';
         ],
       }),
     }),
+    GraphQLModule.forRoot<ApolloDriverConfig>({
+      driver: ApolloDriver,
+      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      sortSchema: true,
+      path: '/api/graphql',
+      playground: false,
+      introspection: true,
+      context: ({ req }: { req: unknown }) => ({ req }),
+    }),
     PrismaModule,
     AuthModule,
     DemoModule,
     EventsModule,
+    DashboardModule,
+    CheckinModule,
     RealtimeModule,
     HoldsModule,
     SeatmapsModule,
@@ -46,6 +63,6 @@ import { SeatmapsModule } from './seatmaps/seatmaps.module';
     NotificationsModule,
     HealthModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: GqlThrottlerGuard }],
 })
 export class AppModule {}
