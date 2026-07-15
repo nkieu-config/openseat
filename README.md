@@ -4,7 +4,7 @@ Open ticketing with real-time reserved seating — create an event, share the li
 
 **Live**: [openseat-ticket.vercel.app](https://openseat-ticket.vercel.app) · [API health](https://openseat-api.onrender.com/api/health) · [API docs](https://openseat-api.onrender.com/api/docs)
 
-> Status: **M3 — Payments, live**. Seats now have prices, and checkout runs through **PayMock** — a payment simulator built in Go that signs, retries, and deliberately duplicates every webhook. Hold a seat at the [demo event](https://openseat-ticket.vercel.app/events/bangkok-indie-fest), pay with fake money, and watch the order flip to paid in realtime. Failing the payment on purpose is encouraged.
+> Status: **M4 — Organizer console, live**. Organizers get a "Backstage Console" — live sales analytics, an occupancy heatmap on the real seat map, attendee CSV export, and a QR check-in scanner — with dashboard reads served over a read-only GraphQL layer (see [ADR 0006](docs/adr/0006-graphql-read-only-dashboard.md)). Everything before it still works: hold a seat at the [demo event](https://openseat-ticket.vercel.app/events/bangkok-indie-fest), pay with fake money through **PayMock**, and watch the order flip to paid in realtime.
 
 ## Why this project exists
 
@@ -60,7 +60,7 @@ pnpm --filter api test:e2e
 | **M1 — Events & free tickets** ✅ | Auth with rotating refresh tokens + guest checkout, SSR event pages, atomic GA inventory (100-buyer race test), QR e-tickets by email, OpenAPI-generated client, demo mode |
 | **M2 — Reserved seating** ✅ | Live seat map (hand-built SVG with pan/zoom), 7-minute holds with countdown and takeover, Socket.IO + Redis fanout, BullMQ hold sweeper, 50-buyer seat race test, partial-unique DB backstop |
 | **M3 — Payments** ✅ | PayMock payment simulator in Go (signed + duplicated webhooks), awaiting_payment state machine with 15-minute expiry, transactional outbox for email/realtime effects, webhook dedup proven by e2e |
-| M4 — Organizer dashboard | Sales analytics, occupancy heatmap, CSV export, read-only GraphQL, QR check-in |
+| **M4 — Organizer console** ✅ | "Backstage Console" design language, sales analytics + timeline, occupancy heatmap, attendee CSV export, read-only GraphQL layer, QR check-in scanner (concurrent double-scan proven) |
 | M5 — Waiting room | Go gate service, admission tokens, k6 load-test report, Simulate Crowd demo |
 | M6 — Seat-map editor | Drag-and-drop editor, i18n (EN/TH), demo video, AWS production architecture doc |
 

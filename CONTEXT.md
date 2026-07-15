@@ -19,6 +19,12 @@ The vocabulary below is the project's source of truth for naming things — in c
 - **Ticket** — the issued right to attend; carries the QR token. Issuing is the act of converting a paid order's holds into tickets.
 - **Check-in** — scanning a ticket QR at the door; a ticket checks in at most once.
 
+## Organizer console
+
+- **Console / Dashboard** — the organizer's read-only control surface for one event (the "Backstage Console" UI): live totals, sales timeline, tier and occupancy breakdowns, attendees. Reads run over the GraphQL layer (ADR 0006).
+- **Occupancy** — the sold / held / available state of a seat map, aggregated per section and drawn as a heatmap (the "occupancy rig").
+- **Sell-through** — issued tickets as a share of capacity.
+
 ## Surge machinery
 
 - **Drop** — an on-sale moment expected to attract surge traffic; enables the waiting room.

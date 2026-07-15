@@ -38,6 +38,15 @@ The single reference for how the web app looks and behaves. If a rule here confl
 - Focus rings are amber (`--ring`) and must stay visible; icon-only buttons carry `aria-label`.
 - Icons are Lucide only — one family, no emoji as UI glyphs.
 
+## Backstage Console (organizer)
+
+The organizer surfaces (`/organizer`, the event console, the check-in scanner) speak a distinct dialect of Stage Light — the "front-of-house" counterpart to the audience-facing pages. Same tokens, different chrome:
+
+- **Console tokens** (globals.css): `--console-panel` (panel fill), `--console-line` (hairline/tick borders), `--console-groove` (inset meter tracks), `--signal-live` (green telemetry lamp), `--signal-warn` (amber). Data reuses the seat-state and `primary` tokens; never add raw hex.
+- **Components** (`src/components/console/*`): `ConsolePanel` (labelled equipment panel), `TelemetryStat` (mono tabular readout), `SignalLamp`, `SalesSparkline` and `OccupancyRig`/`RigLegend` (hand-built SVG — no chart library), `SectionMeter` (fader).
+- **Idioms**: mono uppercase labels with wide tracking for panel headers and units; `tabular-nums` on every figure; amber is the "signal" accent (sold, revenue, focus); wide data (the rig) scrolls inside its own `overflow-x-auto` box, never the page.
+- Occupancy colors **invert** the buyer's semantics: to the organizer, sold = amber (filled/earning), held = indigo, open = groove — the opposite of the seat map, where *available* is the highlighted, pickable state.
+
 ## New-screen checklist
 
 - [ ] Colors and fonts come from tokens only (grep for `#` should find nothing new)
