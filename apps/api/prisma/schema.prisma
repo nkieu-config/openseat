@@ -56,6 +56,8 @@ model Event {
   status        EventStatus @default(draft)
   coverImageUrl String?     @map("cover_image_url")
   isDemo        Boolean     @default(false) @map("is_demo")
+  dropMode      Boolean     @default(false) @map("drop_mode")
+  saleOpensAt   DateTime?   @map("sale_opens_at")
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
 

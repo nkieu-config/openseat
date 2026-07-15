@@ -8,9 +8,11 @@ import {
   HttpCode,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiHeader, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { IsString, Length } from 'class-validator';
+import { AdmissionGuard } from '../admission/admission.guard';
 import { HoldsService } from './holds.service';
 
 class AcquireHoldDto {
@@ -36,7 +38,9 @@ export class HoldsController {
 
   @Post()
   @HttpCode(201)
+  @UseGuards(AdmissionGuard)
   @ApiHeader({ name: 'x-hold-key', required: true })
+  @ApiHeader({ name: 'x-admission-token', required: false })
   acquire(
     @Param('eventId') eventId: string,
     @Body() dto: AcquireHoldDto,

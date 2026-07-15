@@ -426,6 +426,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "x-admission-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -573,6 +581,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "x-admission-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -609,6 +625,14 @@
             "name": "x-hold-key",
             "required": false,
             "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-admission-token",
+            "in": "header",
+            "required": false,
             "schema": {
               "type": "string"
             }

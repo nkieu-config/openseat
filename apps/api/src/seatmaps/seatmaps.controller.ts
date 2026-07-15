@@ -25,6 +25,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { AdmissionGuard } from '../admission/admission.guard';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards';
 import { SeatmapsService } from './seatmaps.service';
@@ -90,7 +91,9 @@ export class SeatmapsController {
   }
 
   @Get()
+  @UseGuards(AdmissionGuard)
   @ApiHeader({ name: 'x-hold-key', required: false })
+  @ApiHeader({ name: 'x-admission-token', required: false })
   get(
     @Param('eventId') eventId: string,
     @Headers('x-hold-key') holderKey?: string,

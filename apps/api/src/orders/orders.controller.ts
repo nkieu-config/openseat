@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { AdmissionGuard } from '../admission/admission.guard';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard, OptionalJwtAuthGuard } from '../auth/guards';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -22,9 +23,10 @@ export class OrdersController {
 
   @Post('events/:eventId/orders')
   @HttpCode(201)
-  @UseGuards(OptionalJwtAuthGuard)
+  @UseGuards(OptionalJwtAuthGuard, AdmissionGuard)
   @ApiHeader({ name: 'idempotency-key', required: false })
   @ApiHeader({ name: 'x-hold-key', required: false })
+  @ApiHeader({ name: 'x-admission-token', required: false })
   async create(
     @Param('eventId') eventId: string,
     @Body() dto: CreateOrderDto,

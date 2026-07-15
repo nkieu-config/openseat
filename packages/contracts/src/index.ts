@@ -38,6 +38,8 @@ export type EventDetail = EventSummary & {
   status: 'draft' | 'published';
   coverImageUrl: string | null;
   isDemo: boolean;
+  dropMode: boolean;
+  saleOpensAt: string | null;
   organizer: { id: string; displayName: string };
   ticketTypes: TicketTypePublic[];
   seatMap: { id: string } | null;

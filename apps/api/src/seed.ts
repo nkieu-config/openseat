@@ -205,6 +205,70 @@ async function seedSeatMap(eventId: string): Promise<number> {
   return totalSold;
 }
 
+async function seedDropEvent(organizerId: string): Promise<number> {
+  const slug = 'midnight-drop';
+  const existing = await prisma.event.findUnique({ where: { slug } });
+  if (existing) {
+    await prisma.ticket.deleteMany({ where: { eventId: existing.id } });
+    await prisma.payment.deleteMany({
+      where: { order: { eventId: existing.id } },
+    });
+    await prisma.order.deleteMany({ where: { eventId: existing.id } });
+    await prisma.event.delete({ where: { id: existing.id } });
+  }
+
+  const startsAt = new Date();
+  startsAt.setUTCDate(startsAt.getUTCDate() + 45);
+  startsAt.setUTCHours(20, 0, 0, 0);
+
+  const capacity = 500;
+  const presold = 137;
+  const event = await prisma.event.create({
+    data: {
+      organizerId,
+      slug,
+      title: 'Midnight Drop — 500 limited passes',
+      description: [
+        'A hard-capped on-sale built to stampede.',
+        '',
+        'Only 500 passes, released all at once. This event runs in drop mode: everyone lands in a live waiting room, holds a spot in the Redis-backed queue, and is admitted at a steady rate. Hit "Simulate a crowd" to watch a few hundred rivals pile in ahead of you and your position tick down in real time.',
+      ].join('\n'),
+      venueName: 'The Warehouse, Bangkok',
+      startsAt,
+      status: 'published',
+      isDemo: true,
+      dropMode: true,
+      saleOpensAt: new Date(),
+      ticketTypes: {
+        create: [
+          {
+            name: 'Drop pass',
+            quantity: capacity,
+            remaining: capacity,
+            priceSatang: 0,
+            maxPerOrder: 2,
+          },
+        ],
+      },
+    },
+    include: { ticketTypes: true },
+  });
+
+  const pass = event.ticketTypes[0];
+  await seedGaTickets({
+    eventId: event.id,
+    ticketTypeId: pass.id,
+    count: presold,
+    perOrder: 1,
+    label: 'drop',
+  });
+  await prisma.ticketType.update({
+    where: { id: pass.id },
+    data: { remaining: capacity - presold },
+  });
+  return presold;
+}
+
 async function main() {
   const organizer = await upsertDemoUser(
     'demo-organizer@openseat.dev',
@@ -295,9 +359,10 @@ async function main() {
   });
 
   const seatedSold = await seedSeatMap(event.id);
+  const dropSold = await seedDropEvent(organizer.id);
 
   process.stdout.write(
-    `Seeded demo event ${event.slug}: 44 GA tickets + ${seatedSold} seated tickets\n`,
+    `Seeded ${event.slug}: 44 GA + ${seatedSold} seated · midnight-drop: ${dropSold} passes\n`,
   );
 }
 
