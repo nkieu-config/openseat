@@ -4,7 +4,7 @@ Open ticketing with real-time reserved seating — create an event, share the li
 
 **Live**: [openseat-ticket.vercel.app](https://openseat-ticket.vercel.app) · [API health](https://openseat-api.onrender.com/api/health) · [API docs](https://openseat-api.onrender.com/api/docs)
 
-> Status: **M4 — Organizer console, live**. Organizers get a "Backstage Console" — live sales analytics, an occupancy heatmap on the real seat map, attendee CSV export, and a QR check-in scanner — with dashboard reads served over a read-only GraphQL layer (see [ADR 0006](docs/adr/0006-graphql-read-only-dashboard.md)). Everything before it still works: hold a seat at the [demo event](https://openseat-ticket.vercel.app/events/bangkok-indie-fest), pay with fake money through **PayMock**, and watch the order flip to paid in realtime.
+> Status: **M5 — Waiting room, live**. Ticket drops now open behind a live waiting room: a Go **Gate** service queues every buyer in Redis, streams their place over SSE, and admits at a controlled rate with a stateless signed token the API verifies itself (see [ADR 0007](docs/adr/0007-waiting-room-gate.md)). Try the [Midnight Drop](https://openseat-ticket.vercel.app/events/midnight-drop) — hit "Simulate a crowd" and watch your place fall. The front door is load-tested at ~13k joins/s (see [the report](docs/load-tests/gate-report.md)).
 
 ## Why this project exists
 
@@ -61,7 +61,7 @@ pnpm --filter api test:e2e
 | **M2 — Reserved seating** ✅ | Live seat map (hand-built SVG with pan/zoom), 7-minute holds with countdown and takeover, Socket.IO + Redis fanout, BullMQ hold sweeper, 50-buyer seat race test, partial-unique DB backstop |
 | **M3 — Payments** ✅ | PayMock payment simulator in Go (signed + duplicated webhooks), awaiting_payment state machine with 15-minute expiry, transactional outbox for email/realtime effects, webhook dedup proven by e2e |
 | **M4 — Organizer console** ✅ | "Backstage Console" design language, sales analytics + timeline, occupancy heatmap, attendee CSV export, read-only GraphQL layer, QR check-in scanner (concurrent double-scan proven) |
-| M5 — Waiting room | Go gate service, admission tokens, k6 load-test report, Simulate Crowd demo |
+| **M5 — Waiting room** ✅ | Go **Gate** service (Redis queue, SSE positions, token-bucket admitter), stateless admission JWTs the API verifies itself, k6 load report (~13k joins/s), Simulate Crowd |
 | M6 — Seat-map editor | Drag-and-drop editor, i18n (EN/TH), demo video, AWS production architecture doc |
 
 Deliberately out of scope: real money and refunds, ticket resale, organizer team RBAC, native mobile apps.
