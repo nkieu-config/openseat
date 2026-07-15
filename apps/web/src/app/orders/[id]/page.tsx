@@ -1,22 +1,34 @@
 "use client";
 
 import type { OrderDetail } from "@openseat/contracts";
+import { CircleCheck, SearchX } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import QRCode from "react-qr-code";
 import { useAuth } from "@/components/auth-provider";
+import { EmptyState } from "@/components/empty-state";
+import { TicketCard } from "@/components/ticket-card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import { formatEventDate } from "@/lib/format";
+
+function OrderSkeleton() {
+  return (
+    <div className="flex w-full max-w-2xl flex-col gap-6">
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-9 w-3/4" />
+        <Skeleton className="h-5 w-1/2" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Skeleton className="h-64" />
+        <Skeleton className="h-64" />
+      </div>
+    </div>
+  );
+}
 
 function OrderView() {
   const params = useParams<{ id: string }>();
@@ -55,30 +67,30 @@ function OrderView() {
   }, [params.id, guestToken, authLoading]);
 
   if (state === "loading") {
-    return <p className="text-muted-foreground">Loading your order…</p>;
+    return <OrderSkeleton />;
   }
   if (state === "missing" || !order) {
     return (
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Order not found</CardTitle>
-          <CardDescription>
-            This order does not exist, or you need the link from your confirmation email to view
-            it.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={SearchX}
+        title="Order not found"
+        description="This order does not exist, or you need the link from your confirmation email to view it."
+        className="w-full max-w-md"
+      />
     );
   }
 
   return (
     <div className="flex w-full max-w-2xl flex-col gap-6">
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
+          <span className="flex size-8 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <CircleCheck className="size-4" aria-hidden="true" />
+          </span>
           <Badge variant={order.status === "paid" ? "default" : "secondary"}>{order.status}</Badge>
-          <span className="font-mono text-xs text-muted-foreground">{order.id}</span>
+          <span className="font-mono text-xs text-muted-foreground">{order.id.slice(0, 8)}</span>
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight">
+        <h1 className="text-3xl font-semibold sm:text-4xl">
           You&apos;re going to {order.event.title}
         </h1>
         <p className="text-muted-foreground">
@@ -91,19 +103,12 @@ function OrderView() {
       <Separator />
       <div className="grid gap-4 sm:grid-cols-2">
         {order.tickets.map((ticket, index) => (
-          <Card key={ticket.id}>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {ticket.ticketType.name} · #{index + 1}
-              </CardTitle>
-              <CardDescription>{ticket.attendeeName}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-center">
-              <div className="rounded-lg bg-white p-3">
-                <QRCode value={ticket.qrToken} size={140} />
-              </div>
-            </CardContent>
-          </Card>
+          <TicketCard
+            key={ticket.id}
+            title={`${ticket.ticketType.name} · #${index + 1}`}
+            subtitle={ticket.attendeeName}
+            qrToken={ticket.qrToken}
+          />
         ))}
       </div>
       <p className="text-center text-sm text-muted-foreground">

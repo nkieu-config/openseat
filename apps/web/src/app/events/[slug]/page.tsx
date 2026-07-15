@@ -48,6 +48,16 @@ export default async function EventPage({ params }: PageProps) {
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-12">
       <div className="grid gap-10 lg:grid-cols-[1fr_360px]">
         <article className="flex flex-col gap-6">
+          <div className="relative h-40 overflow-hidden rounded-2xl border border-border sm:h-52">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/25 via-secondary/40 to-background" />
+            <div className="absolute -top-20 left-1/2 h-56 w-[28rem] -translate-x-1/2 rounded-full bg-primary/20 blur-3xl" />
+            <span
+              aria-hidden="true"
+              className="absolute -bottom-6 right-4 select-none font-display text-9xl font-bold text-foreground/10"
+            >
+              {event.title.charAt(0)}
+            </span>
+          </div>
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
               {event.isDemo ? <Badge variant="secondary">Demo event</Badge> : null}

@@ -97,7 +97,10 @@ describe('Orders (e2e)', () => {
     const ticketTypeId = event.ticketTypes[0].id;
     const runId = Date.now();
 
-    async function attemptOrder(index: number, retriesLeft: number): Promise<number> {
+    async function attemptOrder(
+      index: number,
+      retriesLeft: number,
+    ): Promise<number> {
       try {
         const res = await request(app.getHttpServer())
           .post(`/api/events/${event.id}/orders`)
