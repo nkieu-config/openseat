@@ -5,8 +5,17 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
+
+func withResult(returnURL, status string) string {
+	separator := "?"
+	if strings.Contains(returnURL, "?") {
+		separator = "&"
+	}
+	return returnURL + separator + "payment=" + status
+}
 
 type config struct {
 	port              string
@@ -105,7 +114,7 @@ func (s *server) handlePayPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if intent.Status != statusRequiresAction {
-		http.Redirect(w, r, intent.ReturnURL+"?payment="+intent.Status, http.StatusSeeOther)
+		http.Redirect(w, r, withResult(intent.ReturnURL, intent.Status), http.StatusSeeOther)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -142,7 +151,7 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 			CreatedAt:    time.Now(),
 		})
 	}
-	http.Redirect(w, r, intent.ReturnURL+"?payment="+intent.Status, http.StatusSeeOther)
+	http.Redirect(w, r, withResult(intent.ReturnURL, intent.Status), http.StatusSeeOther)
 }
 
 func main() {

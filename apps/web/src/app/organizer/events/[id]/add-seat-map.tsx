@@ -8,11 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, apiErrorMessage } from "@/lib/api";
 
-type SectionRow = { name: string; tierName: string; rows: number; cols: number };
+type SectionRow = {
+  name: string;
+  tierName: string;
+  rows: number;
+  cols: number;
+  priceBaht: number;
+};
 
 export function AddSeatMap({ eventId, onCreated }: { eventId: string; onCreated: () => void }) {
   const [sections, setSections] = useState<SectionRow[]>([
-    { name: "Front", tierName: "Front seats", rows: 4, cols: 10 },
+    { name: "Front", tierName: "Front seats", rows: 4, cols: 10, priceBaht: 0 },
   ]);
   const [busy, setBusy] = useState(false);
 
@@ -27,7 +33,15 @@ export function AddSeatMap({ eventId, onCreated }: { eventId: string; onCreated:
     setBusy(true);
     const { error, response } = await api.POST("/api/events/{eventId}/seat-map", {
       params: { path: { eventId } },
-      body: { sections },
+      body: {
+        sections: sections.map((section) => ({
+          name: section.name,
+          tierName: section.tierName,
+          rows: section.rows,
+          cols: section.cols,
+          priceSatang: Math.round(section.priceBaht * 100),
+        })),
+      },
     });
     setBusy(false);
     if (!response.ok) {
@@ -50,7 +64,7 @@ export function AddSeatMap({ eventId, onCreated }: { eventId: string; onCreated:
       <CardContent>
         <form onSubmit={(event) => void onSubmit(event)} className="flex flex-col gap-4">
           {sections.map((section, index) => (
-            <div key={index} className="grid gap-3 sm:grid-cols-[1fr_1fr_5rem_5rem_auto]">
+            <div key={index} className="grid gap-3 sm:grid-cols-[1fr_1fr_4.5rem_4.5rem_6rem_auto]">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor={`section-name-${index}`} className="text-xs text-muted-foreground">
                   Section
@@ -103,6 +117,21 @@ export function AddSeatMap({ eventId, onCreated }: { eventId: string; onCreated:
                   onChange={(event) => updateRow(index, { cols: Number(event.target.value) })}
                 />
               </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`section-price-${index}`} className="text-xs text-muted-foreground">
+                  Price (฿)
+                </Label>
+                <Input
+                  id={`section-price-${index}`}
+                  type="number"
+                  required
+                  min={0}
+                  max={1000000}
+                  step={0.25}
+                  value={section.priceBaht}
+                  onChange={(event) => updateRow(index, { priceBaht: Number(event.target.value) })}
+                />
+              </div>
               <Button
                 type="button"
                 variant="ghost"
@@ -126,7 +155,7 @@ export function AddSeatMap({ eventId, onCreated }: { eventId: string; onCreated:
               onClick={() =>
                 setSections((rows) => [
                   ...rows,
-                  { name: `Section ${rows.length + 1}`, tierName: "", rows: 6, cols: 12 },
+                  { name: `Section ${rows.length + 1}`, tierName: "", rows: 6, cols: 12, priceBaht: 0 },
                 ])
               }
             >

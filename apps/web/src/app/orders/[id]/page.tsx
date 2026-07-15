@@ -1,18 +1,21 @@
 "use client";
 
 import type { OrderDetail } from "@openseat/contracts";
-import { CircleCheck, SearchX } from "lucide-react";
+import { CircleCheck, CircleX, Clock, SearchX } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
 import { EmptyState } from "@/components/empty-state";
 import { TicketCard } from "@/components/ticket-card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
-import { formatEventDate } from "@/lib/format";
+import { formatEventDate, formatPrice } from "@/lib/format";
+import { createEventSocket } from "@/lib/realtime";
 
 function OrderSkeleton() {
   return (
@@ -30,13 +33,37 @@ function OrderSkeleton() {
   );
 }
 
+function PaymentCountdown({ expiresAt }: { expiresAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+  const msLeft = Math.max(0, new Date(expiresAt).getTime() - now);
+  const minutes = Math.floor(msLeft / 60_000);
+  const seconds = Math.floor((msLeft % 60_000) / 1000);
+  return (
+    <span className="font-mono tabular-nums text-primary">
+      {minutes}:{seconds.toString().padStart(2, "0")}
+    </span>
+  );
+}
+
 function OrderView() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const guestToken = searchParams.get("token");
+  const paymentResult = searchParams.get("payment");
   const { loading: authLoading } = useAuth();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "missing">("loading");
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    if (paymentResult === "failed") {
+      toast.error("The payment was declined — your order was canceled");
+    }
+  }, [paymentResult]);
 
   useEffect(() => {
     if (authLoading) {
@@ -64,7 +91,21 @@ function OrderView() {
     return () => {
       cancelled = true;
     };
-  }, [params.id, guestToken, authLoading]);
+  }, [params.id, guestToken, authLoading, reloadKey]);
+
+  useEffect(() => {
+    if (!order || order.status !== "awaiting_payment") {
+      return;
+    }
+    const socket = createEventSocket(order.event.id);
+    socket.emit("join-order", { orderId: order.id, guestToken: order.guestToken });
+    socket.on("order", () => setReloadKey((key) => key + 1));
+    const poll = setInterval(() => setReloadKey((key) => key + 1), 10_000);
+    return () => {
+      clearInterval(poll);
+      socket.disconnect();
+    };
+  }, [order]);
 
   if (state === "loading") {
     return <OrderSkeleton />;
@@ -76,6 +117,60 @@ function OrderView() {
         title="Order not found"
         description="This order does not exist, or you need the link from your confirmation email to view it."
         className="w-full max-w-md"
+      />
+    );
+  }
+
+  if (order.status === "awaiting_payment") {
+    return (
+      <div className="flex w-full max-w-xl flex-col gap-6">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-full bg-primary/15 text-primary">
+              <Clock className="size-4" aria-hidden="true" />
+            </span>
+            <Badge variant="secondary">awaiting payment</Badge>
+          </div>
+          <h1 className="text-3xl font-semibold sm:text-4xl">Complete your payment</h1>
+          <p className="text-muted-foreground">
+            {order.event.title} · {formatPrice(order.totalSatang)}
+          </p>
+          {order.expiresAt ? (
+            <p className="text-sm text-muted-foreground">
+              Your seats and tickets are reserved for{" "}
+              <PaymentCountdown expiresAt={order.expiresAt} /> — after that the order expires and
+              they go back on sale.
+            </p>
+          ) : null}
+        </div>
+        {order.payment?.checkoutUrl ? (
+          <Button
+            size="lg"
+            onClick={() => window.location.assign(order.payment!.checkoutUrl)}
+          >
+            Pay {formatPrice(order.totalSatang)} with PayMock
+          </Button>
+        ) : null}
+        <p className="text-xs text-muted-foreground">
+          PayMock is a simulated payment provider — no real money moves. This page updates itself
+          the moment the payment lands.
+        </p>
+      </div>
+    );
+  }
+
+  if (order.status === "expired" || order.status === "canceled") {
+    return (
+      <EmptyState
+        icon={CircleX}
+        title={order.status === "expired" ? "This order expired" : "This order was canceled"}
+        description="The seats and tickets in it went back on sale. You can pick them again from the event page."
+        className="w-full max-w-md"
+        action={
+          <Button variant="outline" size="sm" render={<Link href={`/events/${order.event.slug}`} />}>
+            Back to the event
+          </Button>
+        }
       />
     );
   }

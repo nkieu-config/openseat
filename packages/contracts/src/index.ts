@@ -99,15 +99,17 @@ export type OrderTicket = {
 
 export type OrderDetail = {
   id: string;
-  status: 'pending' | 'paid' | 'expired' | 'canceled';
+  status: 'pending' | 'awaiting_payment' | 'paid' | 'expired' | 'canceled';
   totalSatang: number;
   guestToken: string;
   buyerEmail: string;
   buyerName: string;
   createdAt: string;
+  expiresAt: string | null;
   event: EventSummary;
   items: { id: string; quantity: number; unitPriceSatang: number; ticketType: { id: string; name: string } }[];
   tickets: OrderTicket[];
+  payment: { status: 'requires_action' | 'succeeded' | 'failed'; checkoutUrl: string } | null;
 };
 
 export type MyTicket = {

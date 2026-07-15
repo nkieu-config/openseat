@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { api, apiErrorMessage } from "@/lib/api";
 
-type TicketTypeRow = { name: string; quantity: number };
+type TicketTypeRow = { name: string; quantity: number; priceBaht: number };
 
 export default function NewEventPage() {
   const { user, loading } = useAuth();
@@ -22,7 +22,7 @@ export default function NewEventPage() {
   const [startsAt, setStartsAt] = useState("");
   const [description, setDescription] = useState("");
   const [ticketTypes, setTicketTypes] = useState<TicketTypeRow[]>([
-    { name: "General admission", quantity: 50 },
+    { name: "General admission", quantity: 50, priceBaht: 0 },
   ]);
   const [busy, setBusy] = useState(false);
 
@@ -51,7 +51,7 @@ export default function NewEventPage() {
           ticketTypes: ticketTypes.map((row) => ({
             name: row.name,
             quantity: row.quantity,
-            priceSatang: 0 as const,
+            priceSatang: Math.round(row.priceBaht * 100),
           })),
         },
       });
@@ -139,7 +139,10 @@ export default function NewEventPage() {
                   size="sm"
                   disabled={ticketTypes.length >= 10}
                   onClick={() =>
-                    setTicketTypes((rows) => [...rows, { name: "", quantity: 50 }])
+                    setTicketTypes((rows) => [
+                      ...rows,
+                      { name: "", quantity: 50, priceBaht: 0 },
+                    ])
                   }
                 >
                   Add type
@@ -159,7 +162,7 @@ export default function NewEventPage() {
                       onChange={(event) => updateRow(index, { name: event.target.value })}
                     />
                   </div>
-                  <div className="flex w-28 flex-col gap-2">
+                  <div className="flex w-24 flex-col gap-2">
                     <Label
                       htmlFor={`type-quantity-${index}`}
                       className="text-xs text-muted-foreground"
@@ -175,6 +178,26 @@ export default function NewEventPage() {
                       value={row.quantity}
                       onChange={(event) =>
                         updateRow(index, { quantity: Number(event.target.value) })
+                      }
+                    />
+                  </div>
+                  <div className="flex w-28 flex-col gap-2">
+                    <Label
+                      htmlFor={`type-price-${index}`}
+                      className="text-xs text-muted-foreground"
+                    >
+                      Price (฿)
+                    </Label>
+                    <Input
+                      id={`type-price-${index}`}
+                      type="number"
+                      required
+                      min={0}
+                      max={1000000}
+                      step={0.25}
+                      value={row.priceBaht}
+                      onChange={(event) =>
+                        updateRow(index, { priceBaht: Number(event.target.value) })
                       }
                     />
                   </div>

@@ -73,6 +73,10 @@ export function RsvpCard({ event }: { event: EventDetail }) {
         return;
       }
       const order = data as unknown as OrderDetail;
+      if (order.status === "awaiting_payment" && order.payment?.checkoutUrl) {
+        window.location.assign(order.payment.checkoutUrl);
+        return;
+      }
       toast.success("Tickets are yours — check your email");
       router.push(`/orders/${order.id}?token=${order.guestToken}`);
     } finally {

@@ -618,6 +618,29 @@
         ]
       }
     },
+    "/api/payments/webhook": {
+      "post": {
+        "operationId": "PaymentsController_webhook",
+        "parameters": [
+          {
+            "name": "x-paymock-signature",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "operationId": "HealthController_check",
@@ -718,10 +741,9 @@
           },
           "priceSatang": {
             "type": "number",
-            "enum": [
-              0
-            ],
-            "description": "Paid tickets arrive in a later milestone"
+            "minimum": 0,
+            "maximum": 100000000,
+            "description": "Price in satang; 0 = free"
           },
           "maxPerOrder": {
             "type": "number",
@@ -842,13 +864,20 @@
           "tierName": {
             "type": "string",
             "example": "Front zone"
+          },
+          "priceSatang": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100000000,
+            "description": "Price in satang; 0 = free"
           }
         },
         "required": [
           "name",
           "rows",
           "cols",
-          "tierName"
+          "tierName",
+          "priceSatang"
         ]
       },
       "CreateSeatMapDto": {

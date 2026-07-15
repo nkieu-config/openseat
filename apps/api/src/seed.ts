@@ -11,8 +11,22 @@ const DEMO_EVENT_SLUG = 'bangkok-indie-fest';
 const ROW_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 const SEAT_SECTIONS = [
-  { name: 'Front', rows: 4, cols: 10, tierName: 'Front seats', soldEvery: 5 },
-  { name: 'Main', rows: 6, cols: 12, tierName: 'Main seats', soldEvery: 7 },
+  {
+    name: 'Front',
+    rows: 4,
+    cols: 10,
+    tierName: 'Front seats',
+    priceSatang: 150_000,
+    soldEvery: 5,
+  },
+  {
+    name: 'Main',
+    rows: 6,
+    cols: 12,
+    tierName: 'Main seats',
+    priceSatang: 90_000,
+    soldEvery: 7,
+  },
 ];
 
 async function upsertDemoUser(email: string, displayName: string) {
@@ -89,7 +103,7 @@ async function seedSeatMap(eventId: string): Promise<number> {
         eventId,
         kind: 'seated',
         name: section.tierName,
-        priceSatang: 0,
+        priceSatang: section.priceSatang,
         quantity: capacity,
         remaining: capacity,
         maxPerOrder: 8,
@@ -124,14 +138,14 @@ async function seedSeatMap(eventId: string): Promise<number> {
           buyerEmail,
           buyerName,
           status: 'paid',
-          totalSatang: 0,
+          totalSatang: orderSeats.length * section.priceSatang,
           guestToken: randomBytes(24).toString('base64url'),
           items: {
             create: [
               {
                 ticketTypeId: tier.id,
                 quantity: orderSeats.length,
-                unitPriceSatang: 0,
+                unitPriceSatang: section.priceSatang,
               },
             ],
           },
