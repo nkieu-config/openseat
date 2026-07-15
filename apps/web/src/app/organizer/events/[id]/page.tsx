@@ -1,29 +1,50 @@
 "use client";
 
-import type { MyEvent } from "@openseat/contracts";
+import type { SeatMapData } from "@openseat/contracts";
+import { Download, ScanLine } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
+import { ConsolePanel, SignalLamp } from "@/components/console/panel";
+import {
+  OccupancyRig,
+  RigLegend,
+  SectionMeter,
+} from "@/components/console/occupancy";
+import { SalesSparkline } from "@/components/console/sparkline";
+import { TelemetryStat } from "@/components/console/telemetry";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { api, apiErrorMessage } from "@/lib/api";
-import { formatEventDate } from "@/lib/format";
+import {
+  downloadAttendeesCsv,
+  fetchEventDashboard,
+  type EventDashboard,
+} from "@/lib/dashboard";
+import {
+  formatBaht,
+  formatDayLabel,
+  formatEventDate,
+  formatPercentBp,
+  formatPrice,
+} from "@/lib/format";
 import { AddSeatMap } from "./add-seat-map";
 
-export default function ManageEventPage() {
+export default function EventConsolePage() {
   const params = useParams<{ id: string }>();
+  const eventId = params.id;
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [event, setEvent] = useState<MyEvent | null>(null);
+  const [dashboard, setDashboard] = useState<EventDashboard | null>(null);
+  const [seatMap, setSeatMap] = useState<SeatMapData | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "missing">("loading");
-  const [busy, setBusy] = useState(false);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -31,42 +52,44 @@ export default function ManageEventPage() {
       return;
     }
     if (!user) {
-      router.replace(`/login?next=/organizer/events/${params.id}`);
+      router.replace(`/login?next=/organizer/events/${eventId}`);
       return;
     }
     let cancelled = false;
-    void api.GET("/api/events/mine").then(({ data, response }) => {
-      if (cancelled) {
-        return;
+    void (async () => {
+      try {
+        const dash = await fetchEventDashboard(eventId);
+        let map: SeatMapData | null = null;
+        if (dash.event.seated) {
+          const { data } = await api.GET("/api/events/{eventId}/seat-map", {
+            params: { path: { eventId } },
+          });
+          map = (data as unknown as SeatMapData | undefined) ?? null;
+        }
+        if (cancelled) {
+          return;
+        }
+        setDashboard(dash);
+        setSeatMap(map);
+        setQuantities(
+          Object.fromEntries(dash.tiers.map((tier) => [tier.id, tier.quantity])),
+        );
+        setState("ready");
+      } catch {
+        if (!cancelled) {
+          setState("missing");
+        }
       }
-      if (!response.ok || data === undefined) {
-        setState("missing");
-        return;
-      }
-      const mine = data as unknown as MyEvent[];
-      const found = mine.find((candidate) => candidate.id === params.id);
-      if (!found) {
-        setState("missing");
-        return;
-      }
-      setEvent(found);
-      setQuantities(
-        Object.fromEntries(found.ticketTypes.map((type) => [type.id, type.quantity])),
-      );
-      setState("ready");
-    });
+    })();
     return () => {
       cancelled = true;
     };
-  }, [user, loading, router, params.id, reloadKey]);
+  }, [user, loading, router, eventId, reloadKey]);
 
   async function publish() {
-    if (!event) {
-      return;
-    }
     setBusy(true);
     const { error, response } = await api.POST("/api/events/{id}/publish", {
-      params: { path: { id: event.id } },
+      params: { path: { id: eventId } },
     });
     setBusy(false);
     if (!response.ok) {
@@ -78,18 +101,18 @@ export default function ManageEventPage() {
   }
 
   async function saveQuantity(ticketTypeId: string) {
-    if (!event) {
-      return;
-    }
     const quantity = quantities[ticketTypeId];
     if (!quantity || quantity < 1) {
       toast.error("Quantity must be at least 1");
       return;
     }
-    const { error, response } = await api.PATCH("/api/events/{id}/ticket-types/{ticketTypeId}", {
-      params: { path: { id: event.id, ticketTypeId } },
-      body: { quantity },
-    });
+    const { error, response } = await api.PATCH(
+      "/api/events/{id}/ticket-types/{ticketTypeId}",
+      {
+        params: { path: { id: eventId, ticketTypeId } },
+        body: { quantity },
+      },
+    );
     if (!response.ok) {
       toast.error(apiErrorMessage(error, "Could not update the quantity"));
       return;
@@ -98,14 +121,30 @@ export default function ManageEventPage() {
     setReloadKey((key) => key + 1);
   }
 
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      await downloadAttendeesCsv(
+        eventId,
+        `attendees-${dashboard?.event.slug ?? eventId}.csv`,
+      );
+    } catch {
+      toast.error("Could not export attendees");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   if (loading || state === "loading") {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <p className="text-muted-foreground">Loading event…</p>
+        <p className="font-mono text-sm text-muted-foreground">
+          Powering up console…
+        </p>
       </main>
     );
   }
-  if (state === "missing" || !event) {
+  if (state === "missing" || !dashboard) {
     return (
       <main className="flex flex-1 items-center justify-center">
         <p className="text-muted-foreground">Event not found.</p>
@@ -113,94 +152,236 @@ export default function ManageEventPage() {
     );
   }
 
+  const { event, totals, timeline, tiers, sections } = dashboard;
+  const salesPoints = timeline.map((bucket) => bucket.ticketsSold);
+  const windowStart = timeline[0]?.day;
+  const windowEnd = timeline[timeline.length - 1]?.day;
+  const windowSold = timeline.reduce(
+    (sum, bucket) => sum + bucket.ticketsSold,
+    0,
+  );
+
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12">
+    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 md:py-10">
       <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">
+                Front of House
+              </span>
               <Badge variant={event.status === "published" ? "default" : "secondary"}>
                 {event.status}
               </Badge>
-              {event.seatMap ? <Badge variant="secondary">seated</Badge> : null}
+              {event.seated ? <Badge variant="secondary">seated</Badge> : null}
               {event.isDemo ? <Badge variant="outline">demo</Badge> : null}
             </div>
             <h1 className="text-3xl font-semibold tracking-tight">{event.title}</h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {formatEventDate(event.startsAt)} · {event.venueName}
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" render={<Link href={`/events/${event.slug}`} />}>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              render={<Link href={`/events/${event.slug}`} />}
+            >
               Public page
             </Button>
-            {event.status === "draft" ? (
-              <Button onClick={() => void publish()} disabled={busy}>
-                {busy ? "Publishing…" : "Publish"}
-              </Button>
-            ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void exportCsv()}
+              disabled={exporting || totals.ticketsSold === 0}
+            >
+              <Download className="size-4" />
+              {exporting ? "Exporting…" : "CSV"}
+            </Button>
+            <Button
+              size="sm"
+              render={<Link href={`/organizer/events/${eventId}/checkin`} />}
+            >
+              <ScanLine className="size-4" />
+              Check-in
+            </Button>
           </div>
-        </div>
-        <Separator />
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Ticket types</CardTitle>
-            <CardDescription>
-              {event.ticketsIssued} tickets issued so far. Quantities can grow any time, and can
-              shrink down to the number already issued.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {event.ticketTypes.map((type) => {
-              const issued = type.quantity - type.remaining;
-              return (
-                <div key={type.id} className="flex flex-wrap items-end justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-medium">{type.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {issued} issued · {type.remaining} remaining
-                    </p>
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <div className="flex flex-col gap-1">
-                      <Label
-                        htmlFor={`quantity-${type.id}`}
-                        className="text-xs text-muted-foreground"
-                      >
-                        Total quantity
-                      </Label>
-                      <Input
-                        id={`quantity-${type.id}`}
-                        type="number"
-                        min={issued}
-                        max={100000}
-                        className="w-28"
-                        value={quantities[type.id] ?? type.quantity}
-                        onChange={(changeEvent) =>
-                          setQuantities((current) => ({
-                            ...current,
-                            [type.id]: Number(changeEvent.target.value),
-                          }))
-                        }
+        </header>
+
+        <ConsolePanel
+          label="Master bus"
+          right={
+            <SignalLamp
+              tone={totals.liveHolds > 0 ? "live" : "idle"}
+              label={totals.liveHolds > 0 ? "holds live" : "idle"}
+            />
+          }
+        >
+          <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-6">
+            <TelemetryStat label="Gross" value={formatBaht(totals.grossSatang)} />
+            <TelemetryStat
+              label="Tickets sold"
+              value={totals.ticketsSold}
+              hint={`of ${totals.capacity}`}
+            />
+            <TelemetryStat
+              label="Sell-through"
+              value={formatPercentBp(totals.sellThroughBp)}
+            />
+            <TelemetryStat label="Paid orders" value={totals.paidOrders} />
+            <TelemetryStat
+              label="Live holds"
+              value={totals.liveHolds}
+              hint={totals.pendingOrders > 0 ? `${totals.pendingOrders} pending` : undefined}
+            />
+            <TelemetryStat
+              label="Checked in"
+              value={totals.ticketsCheckedIn}
+              hint={`of ${totals.ticketsSold}`}
+            />
+          </div>
+        </ConsolePanel>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <ConsolePanel
+            label="Sales channel"
+            right={
+              <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                {windowSold} in window
+              </span>
+            }
+          >
+            <SalesSparkline points={salesPoints} />
+            <div className="mt-2 flex justify-between font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+              <span>{windowStart ? formatDayLabel(windowStart) : ""}</span>
+              <span>tickets / day</span>
+              <span>{windowEnd ? formatDayLabel(windowEnd) : ""}</span>
+            </div>
+          </ConsolePanel>
+
+          <ConsolePanel label="Tier faders">
+            <div className="flex flex-col gap-4">
+              {tiers.map((tier) => {
+                const ratio =
+                  tier.quantity > 0 ? (tier.sold / tier.quantity) * 100 : 0;
+                return (
+                  <div key={tier.id} className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{tier.name}</span>
+                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                          {tier.kind}
+                        </span>
+                      </div>
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {formatPrice(tier.priceSatang)}
+                      </span>
+                    </div>
+                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-console-groove">
+                      <div
+                        className="h-full bg-primary"
+                        style={{ width: `${ratio}%` }}
                       />
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={(quantities[type.id] ?? type.quantity) === type.quantity}
-                      onClick={() => void saveQuantity(type.id)}
-                    >
-                      Save
-                    </Button>
+                    <div className="flex justify-between font-mono text-[11px] tabular-nums text-muted-foreground">
+                      <span>
+                        {tier.sold}/{tier.quantity} sold
+                      </span>
+                      <span>{formatBaht(tier.grossSatang)}</span>
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+          </ConsolePanel>
+        </div>
+
+        {event.seated && seatMap ? (
+          <ConsolePanel label="Occupancy rig" right={<RigLegend />}>
+            <div className="flex flex-col gap-5">
+              <div className="overflow-x-auto">
+                <div className="mx-auto max-w-2xl">
+                  <OccupancyRig
+                    seats={seatMap.seats}
+                    maxCols={seatMap.meta.maxCols}
+                    totalRows={seatMap.meta.totalRows}
+                  />
                 </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-        {!event.seatMap ? (
-          <AddSeatMap eventId={event.id} onCreated={() => setReloadKey((key) => key + 1)} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {sections.map((section) => (
+                  <SectionMeter key={section.name} {...section} />
+                ))}
+              </div>
+            </div>
+          </ConsolePanel>
         ) : null}
+
+        <ConsolePanel label="Ticket desk">
+          <div className="flex flex-col gap-4">
+            {event.status === "draft" ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-console-line bg-console-groove/40 px-3 py-2.5">
+                <p className="text-sm text-muted-foreground">
+                  This event is a draft — publish it to open sales.
+                </p>
+                <Button size="sm" onClick={() => void publish()} disabled={busy}>
+                  {busy ? "Publishing…" : "Publish"}
+                </Button>
+              </div>
+            ) : null}
+            {tiers.map((tier) => (
+              <div
+                key={tier.id}
+                className="flex flex-wrap items-end justify-between gap-3"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium">{tier.name}</p>
+                  <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                    {tier.sold} issued · {tier.remaining} remaining
+                  </p>
+                </div>
+                <div className="flex items-end gap-2">
+                  <div className="flex flex-col gap-1">
+                    <Label
+                      htmlFor={`quantity-${tier.id}`}
+                      className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground"
+                    >
+                      Capacity
+                    </Label>
+                    <Input
+                      id={`quantity-${tier.id}`}
+                      type="number"
+                      min={tier.sold}
+                      max={100000}
+                      className="w-28 font-mono tabular-nums"
+                      value={quantities[tier.id] ?? tier.quantity}
+                      onChange={(changeEvent) =>
+                        setQuantities((current) => ({
+                          ...current,
+                          [tier.id]: Number(changeEvent.target.value),
+                        }))
+                      }
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={(quantities[tier.id] ?? tier.quantity) === tier.quantity}
+                    onClick={() => void saveQuantity(tier.id)}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {!event.seated ? (
+              <AddSeatMap
+                eventId={eventId}
+                onCreated={() => setReloadKey((key) => key + 1)}
+              />
+            ) : null}
+          </div>
+        </ConsolePanel>
       </div>
     </main>
   );

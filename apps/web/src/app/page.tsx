@@ -34,7 +34,7 @@ const steps = [
   {
     icon: QrCode,
     title: "Scan at the door",
-    description: "Every ticket carries a QR code. Check-in tooling lands with milestone 4.",
+    description: "Every ticket carries a QR code — scan it at the door from the organizer console.",
   },
 ];
 
@@ -62,7 +62,7 @@ export default function Home() {
       <section className="grid w-full max-w-5xl items-center gap-10 pb-16 pt-16 sm:pt-24 lg:grid-cols-[1.1fr_1fr]">
         <div className="flex flex-col items-start gap-6">
           <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-mono text-xs text-primary">
-            live · milestone 1 — events &amp; free tickets
+            live · milestone 4 — organizer console &amp; check-in
           </span>
           <h1 className="text-balance text-5xl font-semibold leading-[1.05] sm:text-6xl">
             Every seat, <span className="text-primary">exactly once.</span>
