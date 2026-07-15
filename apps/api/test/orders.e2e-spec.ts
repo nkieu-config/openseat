@@ -67,6 +67,7 @@ describe('Orders (e2e)', () => {
       new ValidationPipe({ whitelist: true, transform: true }),
     );
     await app.init();
+    await app.listen(0);
     prisma = app.get(PrismaService);
 
     const registerRes = await request(app.getHttpServer())

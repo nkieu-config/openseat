@@ -25,6 +25,9 @@ export class HoldSweeperService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
+    if (process.env.NODE_ENV === 'test') {
+      return;
+    }
     const redisUrl = this.config.get<string>('REDIS_URL');
     if (!redisUrl) {
       this.logger.warn('REDIS_URL not set; hold sweeper disabled');
@@ -39,6 +42,11 @@ export class HoldSweeperService implements OnModuleInit, OnModuleDestroy {
       maxRetriesPerRequest: null,
     });
     this.connections = [queueConnection, workerConnection];
+    for (const connection of this.connections) {
+      connection.on('error', (error) => {
+        this.logger.warn(`Sweeper redis connection error: ${error.message}`);
+      });
+    }
 
     this.queue = new Queue(QUEUE_NAME, { connection: queueConnection });
     await this.queue.upsertJobScheduler('sweep-expired-holds', {
