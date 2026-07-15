@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
@@ -31,6 +32,10 @@ export const metadata: Metadata = {
     "Open ticketing platform with live seat selection, built to survive on-sale rushes without double-selling a single seat.",
 };
 
+export const viewport: Viewport = {
+  themeColor: "#101830",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,15 +44,18 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${geistSans.variable} ${geistMono.variable} ${outfit.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        <AuthProvider>
-          <SiteHeader />
-          <div className="flex flex-1 flex-col">{children}</div>
-          <SiteFooter />
-          <Toaster />
-        </AuthProvider>
+      <body className="flex min-h-dvh flex-col">
+        <ThemeProvider>
+          <AuthProvider>
+            <SiteHeader />
+            <div className="flex flex-1 flex-col">{children}</div>
+            <SiteFooter />
+            <Toaster />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

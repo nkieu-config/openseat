@@ -107,6 +107,7 @@ export function RsvpCard({ event }: { event: EventDetail }) {
                       type="button"
                       variant="outline"
                       size="icon-sm"
+                      className="size-11 sm:size-7"
                       disabled={selected === 0}
                       onClick={() => adjust(type.id, -1, maxSelectable)}
                       aria-label={`Remove one ${type.name}`}
@@ -118,6 +119,7 @@ export function RsvpCard({ event }: { event: EventDetail }) {
                       type="button"
                       variant="outline"
                       size="icon-sm"
+                      className="size-11 sm:size-7"
                       disabled={selected >= maxSelectable}
                       onClick={() => adjust(type.id, 1, maxSelectable)}
                       aria-label={`Add one ${type.name}`}

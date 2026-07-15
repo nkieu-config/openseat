@@ -37,6 +37,7 @@ Prisma 7 notes: connection URL lives in `apps/api/prisma.config.ts` (not in sche
 - No AI attribution in commits
 - Money is integer satang; timestamps are UTC
 - Domain terms come from `CONTEXT.md` — a hold is a "hold", never a "lock" or "reservation"
+- UI follows `docs/design.md` (Stage Light): tokens only (no raw hex), dark is the canonical theme via next-themes, containers from the documented scale, touch targets ≥ 44px on mobile
 - Correctness invariants live in the database (unique constraints), not only in application logic
 
 ## Agent skills
