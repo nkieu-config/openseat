@@ -5,7 +5,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsDateString,
-  IsIn,
+
   IsInt,
   IsOptional,
   IsString,
@@ -28,14 +28,10 @@ export class CreateTicketTypeDto {
   @Max(100_000)
   quantity!: number;
 
-  @ApiProperty({
-    enum: [0],
-    description: 'Paid tickets arrive in a later milestone',
-  })
-  @IsIn([0], {
-    message:
-      'Paid tickets arrive in a later milestone; price must be 0 for now',
-  })
+  @ApiProperty({ minimum: 0, maximum: 100_000_000, description: 'Price in satang; 0 = free' })
+  @IsInt()
+  @Min(0)
+  @Max(100_000_000)
   priceSatang!: number;
 
   @ApiPropertyOptional({ minimum: 1, maximum: 20, default: 10 })

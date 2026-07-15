@@ -53,7 +53,7 @@ export class SeatmapsService {
             eventId,
             kind: 'seated',
             name: section.tierName.trim(),
-            priceSatang: 0,
+            priceSatang: section.priceSatang,
             quantity: section.rows * section.cols,
             remaining: section.rows * section.cols,
             maxPerOrder: 8,

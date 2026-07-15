@@ -169,6 +169,7 @@ model Order {
   totalSatang    Int         @default(0) @map("total_satang")
   idempotencyKey String?     @map("idempotency_key")
   guestToken     String      @unique @map("guest_token")
+  expiresAt      DateTime?   @map("expires_at")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
@@ -176,11 +177,55 @@ model Order {
   buyer   User?       @relation(fields: [buyerUserId], references: [id])
   items   OrderItem[]
   tickets Ticket[]
+  payment Payment?
 
   @@unique([eventId, idempotencyKey])
   @@index([buyerUserId])
   @@index([buyerEmail])
   @@map("orders")
+}
+
+enum PaymentStatus {
+  requires_action
+  succeeded
+  failed
+}
+
+model Payment {
+  id               String        @id @default(uuid())
+  orderId          String        @unique @map("order_id")
+  providerIntentId String        @unique @map("provider_intent_id")
+  checkoutUrl      String        @map("checkout_url")
+  status           PaymentStatus @default(requires_action)
+  amountSatang     Int           @map("amount_satang")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+model WebhookEvent {
+  id              String    @id @default(uuid())
+  providerEventId String    @unique @map("provider_event_id")
+  type            String
+  receivedAt      DateTime  @default(now()) @map("received_at")
+  processedAt     DateTime? @map("processed_at")
+
+  @@map("webhook_events")
+}
+
+model OutboxEvent {
+  id          String    @id @default(uuid())
+  type        String
+  payload     Json
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  processedAt DateTime? @map("processed_at")
+
+  @@index([processedAt, createdAt])
+  @@map("outbox_events")
 }
 
 model OrderItem {

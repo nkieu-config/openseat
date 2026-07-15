@@ -51,6 +51,12 @@ export class SeatMapSectionDto {
   @IsString()
   @Length(1, 80)
   tierName!: string;
+
+  @ApiProperty({ minimum: 0, maximum: 100_000_000, description: 'Price in satang; 0 = free' })
+  @IsInt()
+  @Min(0)
+  @Max(100_000_000)
+  priceSatang!: number;
 }
 
 export class CreateSeatMapDto {

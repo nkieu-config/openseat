@@ -1,0 +1,154 @@
+package main
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+	"os"
+	"time"
+)
+
+type config struct {
+	port              string
+	apiKey            string
+	webhookSecret     string
+	publicURL         string
+	duplicateWebhooks bool
+}
+
+func envOr(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func loadConfig() config {
+	return config{
+		port:              envOr("PORT", "4100"),
+		apiKey:            envOr("PAYMOCK_API_KEY", "paymock-dev-key"),
+		webhookSecret:     envOr("PAYMOCK_WEBHOOK_SECRET", "paymock-dev-webhook-secret"),
+		publicURL:         envOr("PAYMOCK_PUBLIC_URL", "http://localhost:4100"),
+		duplicateWebhooks: envOr("PAYMOCK_DUPLICATE_WEBHOOKS", "true") == "true",
+	}
+}
+
+type createIntentRequest struct {
+	OrderID      string `json:"orderId"`
+	AmountSatang int64  `json:"amountSatang"`
+	Currency     string `json:"currency"`
+	CallbackURL  string `json:"callbackUrl"`
+	ReturnURL    string `json:"returnUrl"`
+}
+
+type server struct {
+	cfg        config
+	store      *store
+	dispatcher *dispatcher
+	mux        *http.ServeMux
+}
+
+func newServer(cfg config, st *store, dp *dispatcher) *server {
+	s := &server{cfg: cfg, store: st, dispatcher: dp, mux: http.NewServeMux()}
+	s.mux.HandleFunc("GET /health", s.handleHealth)
+	s.mux.HandleFunc("POST /intents", s.handleCreateIntent)
+	s.mux.HandleFunc("GET /pay/{id}", s.handlePayPage)
+	s.mux.HandleFunc("POST /pay/{id}/confirm", s.handleConfirm)
+	return s
+}
+
+func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.mux.ServeHTTP(w, r)
+}
+
+func writeJSON(w http.ResponseWriter, status int, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		log.Printf("response encode failed: %v", err)
+	}
+}
+
+func (s *server) handleHealth(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *server) handleCreateIntent(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Authorization") != "Bearer "+s.cfg.apiKey {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid api key"})
+		return
+	}
+	var req createIntentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json body"})
+		return
+	}
+	if req.OrderID == "" || req.AmountSatang <= 0 || req.CallbackURL == "" || req.ReturnURL == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "orderId, amountSatang, callbackUrl, and returnUrl are required"})
+		return
+	}
+	if req.Currency == "" {
+		req.Currency = "THB"
+	}
+	intent := s.store.Create(req.OrderID, req.AmountSatang, req.Currency, req.CallbackURL, req.ReturnURL)
+	writeJSON(w, http.StatusCreated, map[string]string{
+		"intentId":    intent.ID,
+		"checkoutUrl": s.cfg.publicURL + "/pay/" + intent.ID,
+		"status":      intent.Status,
+	})
+}
+
+func (s *server) handlePayPage(w http.ResponseWriter, r *http.Request) {
+	intent, ok := s.store.Get(r.PathValue("id"))
+	if !ok {
+		http.Error(w, "payment intent not found", http.StatusNotFound)
+		return
+	}
+	if intent.Status != statusRequiresAction {
+		http.Redirect(w, r, intent.ReturnURL+"?payment="+intent.Status, http.StatusSeeOther)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err := payPage.Execute(w, map[string]string{
+		"IntentID": intent.ID,
+		"OrderID":  intent.OrderID,
+		"Amount":   formatAmount(intent.AmountSatang),
+	})
+	if err != nil {
+		log.Printf("pay page render failed: %v", err)
+	}
+}
+
+func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
+	outcome := r.FormValue("outcome")
+	status := statusSucceeded
+	eventType := "payment.succeeded"
+	if outcome == "fail" {
+		status = statusFailed
+		eventType = "payment.failed"
+	}
+	intent, ok := s.store.Resolve(r.PathValue("id"), status)
+	if intent == nil {
+		http.Error(w, "payment intent not found", http.StatusNotFound)
+		return
+	}
+	if ok {
+		s.dispatcher.Send(intent.CallbackURL, Event{
+			ID:           newID("evt_"),
+			Type:         eventType,
+			IntentID:     intent.ID,
+			OrderID:      intent.OrderID,
+			AmountSatang: intent.AmountSatang,
+			CreatedAt:    time.Now(),
+		})
+	}
+	http.Redirect(w, r, intent.ReturnURL+"?payment="+intent.Status, http.StatusSeeOther)
+}
+
+func main() {
+	cfg := loadConfig()
+	dispatcher := newDispatcher(cfg.webhookSecret, cfg.duplicateWebhooks, defaultBackoff, log.Default())
+	srv := newServer(cfg, newStore(), dispatcher)
+	log.Printf("paymock listening on :%s (duplicate webhooks: %t)", cfg.port, cfg.duplicateWebhooks)
+	log.Fatal(http.ListenAndServe(":"+cfg.port, srv))
+}
