@@ -30,6 +30,12 @@ Emitted OTel name → the counter/gauge/histogram it is, and where it is increme
 
 HTTP server metrics come from `@opentelemetry/instrumentation-http` (v0.220, **old semconv by default**): histogram `http.server.duration` in **milliseconds**, with labels `http_method`, `http_status_code`, `http_route`, `service_name`. Grafana Cloud's OTLP ingest appends the unit suffix, so it lands in Mimir as **`http_server_duration_milliseconds_bucket` / `_count` / `_sum`** — confirmed in Explore on 2026-07-16 and used verbatim by the dashboard and the alert.
 
+## Why the queries use a fixed `[5m]` window
+
+`rate()` needs at least two samples inside its window. Both SDKs push metrics on an interval, so the window must comfortably exceed it — and Grafana's `$__rate_interval` does not know that interval (it derives from the *datasource's* scrape-interval setting, which OTLP push ignores). With the SDK default of 60s, `$__rate_interval` resolved to ~60s, every window held a single sample, and **every rate panel rendered empty while the metrics were plainly there in Explore**. A fixed `[5m]` is immune to that mismatch, so the dashboard works on import without anyone tuning the datasource.
+
+The exporters push every **15s** (`exportIntervalMillis` in `apps/api/src/telemetry/tracing.ts`, `WithInterval` in `services/gate/telemetry.go`) rather than the 60s default: this product's interesting dynamics are second-scale — a waiting-room queue drains 250 entrants in ~30s — and 60s resolution flattens that curve into a couple of points.
+
 ## If the RED row is empty
 
 First check the **Metrics (Mimir)** dropdown at the top of the dashboard is actually set — a datasource variable imports unselected, and every panel silently returns nothing until it is.
