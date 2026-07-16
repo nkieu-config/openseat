@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { holdsAcquired } from '../telemetry/metrics';
 
 const DEFAULT_HOLD_TTL_MS = 7 * 60_000;
 const MAX_HELD_PER_KEY = 8;
@@ -59,6 +60,7 @@ export class HoldsService {
     });
 
     if (inserted === 1) {
+      holdsAcquired.add(1, { result: 'won' });
       this.realtime.seatsChanged(eventId, { held: [seatId] });
       return { seatId, expiresAt };
     }
@@ -73,6 +75,7 @@ export class HoldsService {
       });
       return { seatId, expiresAt: refreshed.expiresAt };
     }
+    holdsAcquired.add(1, { result: 'conflict' });
     if (existing) {
       throw new ConflictException({
         message: 'Seat is held by someone else',

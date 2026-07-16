@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ticketsCheckedIn } from '../telemetry/metrics';
 
 export type CheckinResult = {
   outcome: 'checked_in' | 'already_checked_in';
@@ -60,6 +61,9 @@ export class CheckinService {
     const updated = await this.prisma.ticket.updateMany({
       where: { id: ticket.id, status: 'issued' },
       data: { status: 'checked_in', checkedInAt: new Date() },
+    });
+    ticketsCheckedIn.add(1, {
+      result: updated.count === 1 ? 'admitted' : 'duplicate',
     });
     const fresh = await this.prisma.ticket.findUniqueOrThrow({
       where: { id: ticket.id },

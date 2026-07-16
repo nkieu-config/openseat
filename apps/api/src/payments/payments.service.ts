@@ -5,6 +5,7 @@ import { OutboxService } from '../outbox/outbox.service';
 import { PaymockClientService } from '../paymock-client/paymock-client.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../generated/prisma/client';
+import { ordersPaid, webhookEvents } from '../telemetry/metrics';
 
 export type PaymockWebhookEvent = {
   id: string;
@@ -28,9 +29,14 @@ export class PaymentsService {
     private readonly outbox: OutboxService,
   ) {}
 
+  private rejectWebhook(message: string): never {
+    webhookEvents.add(1, { outcome: 'invalid' });
+    throw new BadRequestException(message);
+  }
+
   verifySignature(header: string | undefined, rawBody: Buffer): void {
     if (!header) {
-      throw new BadRequestException('Missing webhook signature');
+      this.rejectWebhook('Missing webhook signature');
     }
     const parts = new Map(
       header.split(',').map((part) => part.split('=', 2) as [string, string]),
@@ -38,10 +44,10 @@ export class PaymentsService {
     const timestamp = Number(parts.get('t'));
     const signature = parts.get('v1');
     if (!Number.isFinite(timestamp) || !signature) {
-      throw new BadRequestException('Malformed webhook signature');
+      this.rejectWebhook('Malformed webhook signature');
     }
     if (Math.abs(Date.now() / 1000 - timestamp) > SIGNATURE_TOLERANCE_SECONDS) {
-      throw new BadRequestException('Webhook timestamp outside tolerance');
+      this.rejectWebhook('Webhook timestamp outside tolerance');
     }
     const expected = createHmac('sha256', this.paymock.webhookSecret())
       .update(`${timestamp}.`)
@@ -53,7 +59,7 @@ export class PaymentsService {
       provided.length !== wanted.length ||
       !timingSafeEqual(provided, wanted)
     ) {
-      throw new BadRequestException('Invalid webhook signature');
+      this.rejectWebhook('Invalid webhook signature');
     }
   }
 
@@ -68,6 +74,7 @@ export class PaymentsService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
+        webhookEvents.add(1, { outcome: 'duplicate' });
         return false;
       }
       throw error;
@@ -84,9 +91,11 @@ export class PaymentsService {
       where: { providerEventId: event.id },
       data: { processedAt: new Date() },
     });
+    webhookEvents.add(1, { outcome: 'processed' });
   }
 
   private async handleSucceeded(event: PaymockWebhookEvent) {
+    let becamePaid = false;
     await this.prisma.$transaction(async (tx) => {
       const paymentUpdated = await tx.payment.updateMany({
         where: { providerIntentId: event.intentId, status: 'requires_action' },
@@ -105,6 +114,7 @@ export class PaymentsService {
         );
         return;
       }
+      becamePaid = true;
 
       const order = await tx.order.findUniqueOrThrow({
         where: { id: event.orderId },
@@ -172,6 +182,9 @@ export class PaymentsService {
         });
       }
     });
+    if (becamePaid) {
+      ordersPaid.add(1);
+    }
   }
 
   private async handleFailed(event: PaymockWebhookEvent) {

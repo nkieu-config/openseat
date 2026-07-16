@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
+import { admissionsVerified } from '../telemetry/metrics';
 
 function safeEqual(a: string, b: string): boolean {
   const bufferA = Buffer.from(a);
@@ -47,11 +48,13 @@ export class AdmissionGuard implements CanActivate {
     const header = request.headers['x-admission-token'];
     const token = Array.isArray(header) ? header[0] : header;
     if (!token || !this.isValid(token, eventId)) {
+      admissionsVerified.add(1, { result: 'rejected' });
       throw new ForbiddenException({
         code: 'ADMISSION_REQUIRED',
         message: 'Join the waiting room to enter this on-sale',
       });
     }
+    admissionsVerified.add(1, { result: 'valid' });
     return true;
   }
 
