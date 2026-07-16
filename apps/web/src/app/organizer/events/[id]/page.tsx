@@ -1,7 +1,7 @@
 "use client";
 
 import type { SeatMapData } from "@openseat/contracts";
-import { Download, ScanLine } from "lucide-react";
+import { Download, LayoutGrid, ScanLine } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -32,8 +32,6 @@ import {
   formatPercentBp,
   formatPrice,
 } from "@/lib/format";
-import { AddSeatMap } from "./add-seat-map";
-
 export default function EventConsolePage() {
   const params = useParams<{ id: string }>();
   const eventId = params.id;
@@ -375,10 +373,18 @@ export default function EventConsolePage() {
               </div>
             ))}
             {!event.seated ? (
-              <AddSeatMap
-                eventId={eventId}
-                onCreated={() => setReloadKey((key) => key + 1)}
-              />
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-console-line bg-console-groove/40 px-3 py-2.5">
+                <p className="text-sm text-muted-foreground">
+                  No seat map yet — design one with the drag-and-drop editor.
+                </p>
+                <Button
+                  size="sm"
+                  render={<Link href={`/organizer/events/${eventId}/seatmap`} />}
+                >
+                  <LayoutGrid className="size-4" />
+                  Design seat map
+                </Button>
+              </div>
             ) : null}
           </div>
         </ConsolePanel>
