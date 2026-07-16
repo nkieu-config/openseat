@@ -42,6 +42,14 @@ services:
         value: https://openseat-api.onrender.com
       - key: GOOGLE_CLIENT_ID
         sync: false
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false
+      - key: OTEL_SERVICE_NAME
+        value: openseat-api
+      - key: OTEL_RESOURCE_ATTRIBUTES
+        value: service.namespace=openseat,deployment.environment=production
       - fromGroup: paymock-shared
       - fromGroup: gate-shared
 
@@ -78,6 +86,14 @@ services:
         value: '1000'
       - key: ADMISSION_TTL_SECONDS
         value: '600'
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false
+      - key: OTEL_SERVICE_NAME
+        value: openseat-gate
+      - key: OTEL_RESOURCE_ATTRIBUTES
+        value: service.namespace=openseat,deployment.environment=production
       - fromGroup: gate-shared
 
   - type: keyvalue
