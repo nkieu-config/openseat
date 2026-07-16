@@ -5,13 +5,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 function LoginForm() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -26,6 +27,17 @@ function LoginForm() {
       router.push(searchParams.get("next") ?? "/");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Login failed");
+      setBusy(false);
+    }
+  }
+
+  async function onGoogle(credential: string) {
+    setBusy(true);
+    try {
+      await loginWithGoogle(credential);
+      router.push(searchParams.get("next") ?? "/");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Google sign-in failed");
       setBusy(false);
     }
   }
@@ -63,6 +75,7 @@ function LoginForm() {
           <Button type="submit" disabled={busy}>
             {busy ? "Logging in…" : "Log in"}
           </Button>
+          <GoogleSignInButton onCredential={onGoogle} disabled={busy} />
           <p className="text-center text-sm text-muted-foreground">
             New here?{" "}
             <Link href="/register" className="underline underline-offset-4 hover:text-foreground">

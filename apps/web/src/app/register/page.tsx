@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const router = useRouter();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -26,6 +27,17 @@ export default function RegisterPage() {
       router.push("/organizer");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Registration failed");
+      setBusy(false);
+    }
+  }
+
+  async function onGoogle(credential: string) {
+    setBusy(true);
+    try {
+      await loginWithGoogle(credential);
+      router.push("/organizer");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Google sign-in failed");
       setBusy(false);
     }
   }
@@ -76,6 +88,7 @@ export default function RegisterPage() {
             <Button type="submit" disabled={busy}>
               {busy ? "Creating account…" : "Create account"}
             </Button>
+            <GoogleSignInButton onCredential={onGoogle} disabled={busy} />
             <p className="text-center text-sm text-muted-foreground">
               Already have an account?{" "}
               <Link href="/login" className="underline underline-offset-4 hover:text-foreground">

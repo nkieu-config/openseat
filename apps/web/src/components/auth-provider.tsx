@@ -15,6 +15,7 @@ type AuthContextValue = {
   user: PublicUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<PublicUser>;
+  loginWithGoogle: (credential: string) => Promise<PublicUser>;
   register: (input: {
     email: string;
     password: string;
@@ -74,6 +75,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [applySession],
   );
 
+  const loginWithGoogle = useCallback(
+    async (credential: string) => {
+      const { data, error, response } = await api.POST("/api/auth/google", {
+        body: { credential },
+      });
+      if (!response.ok || data === undefined) {
+        throw new Error(apiErrorMessage(error, "Google sign-in failed"));
+      }
+      const session = data as unknown as AuthResponse;
+      applySession(session);
+      return session.user;
+    },
+    [applySession],
+  );
+
   const register = useCallback(
     async (input: { email: string; password: string; displayName: string }) => {
       const { data, error, response } = await api.POST("/api/auth/register", {
@@ -110,8 +126,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [applySession]);
 
   const value = useMemo(
-    () => ({ user, loading, login, register, loginDemo, logout }),
-    [user, loading, login, register, loginDemo, logout],
+    () => ({
+      user,
+      loading,
+      login,
+      loginWithGoogle,
+      register,
+      loginDemo,
+      logout,
+    }),
+    [user, loading, login, loginWithGoogle, register, loginDemo, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
