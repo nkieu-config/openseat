@@ -9,8 +9,8 @@ The committed half of M7 (see `docs/specs/2026-07-16-m7-observability-design.md`
 ## Import the dashboard
 
 1. Grafana → **Dashboards → New → Import → Upload JSON file** → `openseat-ops-dashboard.json`.
-2. When prompted, pick the datasources for the two variables: **Metrics (Mimir)** and **Logs (Loki)** — the Grafana-Cloud-provisioned Prometheus and Loki data sources.
-3. Save. The custom-metric panels (funnel, drop ops) populate as soon as real traffic flows; the RED row needs the HTTP histogram (see the name note below).
+2. Open the dashboard and set the **Metrics (Mimir)** dropdown at the top to the Grafana-Cloud Prometheus data source, then **Save**. A datasource variable imports with an empty selection; until it is set every panel queries nothing and the whole dashboard looks broken.
+3. The custom-metric panels (funnel, drop ops) populate as soon as real traffic flows; the RED row needs the HTTP histogram (see the name note below).
 
 ## Metric catalog
 

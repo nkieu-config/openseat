@@ -15,14 +15,6 @@
         "label": "Metrics (Mimir)",
         "includeAll": false,
         "current": {}
-      },
-      {
-        "name": "loki",
-        "type": "datasource",
-        "pluginId": "loki",
-        "label": "Logs (Loki)",
-        "includeAll": false,
-        "current": {}
       }
     ]
   },
