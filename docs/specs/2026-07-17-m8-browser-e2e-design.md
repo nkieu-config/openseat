@@ -111,7 +111,7 @@ All four services run on localhost, so the wiring is defaults plus the shared se
 ## Risks
 
 - **Realtime timing.** The seat batcher flushes every ~250ms, so `seat-race` asserts on state that arrives asynchronously. Playwright's auto-waiting expectations handle this correctly; polling loops would not. The risk is writing the assertion wrong, not the timing itself.
-- **The canceled-order UI.** The order page's known branches are `awaiting_payment`, `paid`, and `expired`. A failed payment produces `canceled`. If `payment-failure` finds that state falls through to a bare default, that is a real user-facing gap and fixing it is in scope — an e2e suite earning its keep on the day it lands.
+- **~~The canceled-order UI.~~** Retired before implementation. The concern was that a failed payment produces `canceled` while the order page only branched on `awaiting_payment`/`paid`/`expired`. Reading the page settled it: it already renders "This order was canceled" and toasts "The payment was declined — your order was canceled". `payment-failure` therefore asserts existing behaviour rather than discovering a gap. Recorded because a risk disproved by reading the code is worth exactly as much as one confirmed.
 - **CI wall clock.** The job builds two apps and downloads a browser. Mitigated by the existing turbo cache and a Playwright browser cache; it runs parallel to the other jobs, so the pull request's total time moves only if this becomes the slowest one.
 - **Reseed versus a live API.** `globalSetup` reseeds while nothing is running; Playwright starts the services afterwards. Reversing that order would race the hold sweeper against the delete.
 
