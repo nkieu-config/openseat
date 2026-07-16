@@ -13,10 +13,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/auth-provider";
+import { useDictionary } from "@/i18n/provider";
 
 export function SiteHeader() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const dict = useDictionary();
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur">
@@ -52,17 +54,17 @@ export function SiteHeader() {
                     void logout().then(() => router.push("/"));
                   }}
                 >
-                  Log out
+                  {dict.common.logOut}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <>
               <Button variant="ghost" size="sm" render={<Link href="/login" />}>
-                Log in
+                {dict.common.logIn}
               </Button>
               <Button size="sm" render={<Link href="/register" />}>
-                Get started
+                {dict.common.getStarted}
               </Button>
             </>
           )}

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DemoButtons } from "@/components/demo-buttons";
 import { SeatMapTeaser } from "@/components/seat-map-teaser";
+import { getServerDictionary } from "@/i18n/server";
 
 const proof = [
   {
@@ -56,27 +57,28 @@ const highlights = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const dict = await getServerDictionary();
   return (
     <main className="flex flex-1 flex-col items-center px-4 pb-24">
       <section className="grid w-full max-w-5xl items-center gap-10 pb-16 pt-16 sm:pt-24 lg:grid-cols-[1.1fr_1fr]">
         <div className="flex flex-col items-start gap-6">
           <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-mono text-xs text-primary">
-            live · milestone 4 — organizer console &amp; check-in
+            {dict.landing.status}
           </span>
           <h1 className="text-balance text-5xl font-semibold leading-[1.05] sm:text-6xl">
-            Every seat, <span className="text-primary">exactly once.</span>
+            {dict.landing.title1}
+            <span className="text-primary">{dict.landing.title2}</span>
           </h1>
           <p className="max-w-lg text-pretty text-lg leading-relaxed text-muted-foreground">
-            OpenSeat is open ticketing built to survive on-sale rushes. Create an event, share the
-            link, and issue QR tickets — without ever selling the same spot twice.
+            {dict.landing.lead}
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Button size="lg" render={<Link href="/events/bangkok-indie-fest" />}>
-              View the demo event
+              {dict.landing.viewDemo}
             </Button>
             <Button size="lg" variant="outline" render={<Link href="/register" />}>
-              Create your own
+              {dict.landing.createOwn}
             </Button>
           </div>
           <DemoButtons />

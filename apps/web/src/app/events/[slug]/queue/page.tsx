@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useDictionary } from "@/i18n/provider";
 import {
   getAdmissionToken,
   isAdmissionValid,
@@ -31,6 +32,7 @@ export default function QueuePage() {
   const [total, setTotal] = useState<number | null>(null);
   const [simulating, setSimulating] = useState(false);
   const eventIdRef = useRef<string | null>(null);
+  const dict = useDictionary();
 
   useEffect(() => {
     let cancelled = false;
@@ -134,12 +136,12 @@ export default function QueuePage() {
       <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-border bg-card px-6 py-10 text-center">
         <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-mono text-xs uppercase tracking-widest text-primary">
           <span className="size-2 animate-pulse rounded-full bg-primary" />
-          On-sale live
+          {dict.queue.live}
         </span>
         <div className="flex flex-col gap-1">
           <p className="text-sm text-muted-foreground">{event?.title}</p>
           <h1 className="text-2xl font-semibold tracking-tight">
-            You&rsquo;re in the queue
+            {dict.queue.title}
           </h1>
         </div>
 
@@ -148,14 +150,15 @@ export default function QueuePage() {
             {position ?? "—"}
           </span>
           <span className="text-sm text-muted-foreground">
-            your place {total !== null ? `of ${total.toLocaleString()}` : ""}
+            {dict.queue.place}{" "}
+            {total !== null ? `${dict.queue.of} ${total.toLocaleString()}` : ""}
           </span>
         </div>
 
         <p className="text-sm text-muted-foreground">
           {ahead === 0
-            ? "You're next — hold tight."
-            : `${ahead?.toLocaleString()} ahead of you. The line moves automatically.`}
+            ? dict.queue.youreNext
+            : `${ahead?.toLocaleString()} ${dict.queue.ahead}`}
         </p>
 
         <div className="flex w-full flex-col gap-3">
@@ -165,17 +168,14 @@ export default function QueuePage() {
             disabled={simulating}
           >
             <Users className="size-4" />
-            {simulating ? "Summoning…" : "Simulate a crowd"}
+            {simulating ? dict.queue.simulating : dict.queue.simulate}
           </Button>
           <Button variant="ghost" size="sm" render={<Link href={`/events/${slug}`} />}>
-            Leave the queue
+            {dict.queue.leave}
           </Button>
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          Keep this tab open — you&rsquo;ll enter automatically when it&rsquo;s your
-          turn.
-        </p>
+        <p className="text-xs text-muted-foreground">{dict.queue.keepOpen}</p>
       </div>
     </main>
   );
