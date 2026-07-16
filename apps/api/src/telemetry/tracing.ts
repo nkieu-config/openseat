@@ -21,6 +21,7 @@ export function startTelemetry(): NodeSDK | null {
     traceExporter: new OTLPTraceExporter(),
     metricReader: new PeriodicExportingMetricReader({
       exporter: new OTLPMetricExporter(),
+      exportIntervalMillis: 15_000,
     }),
     logRecordProcessors: [
       new BatchLogRecordProcessor({ exporter: new OTLPLogExporter() }),

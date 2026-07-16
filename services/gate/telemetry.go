@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -47,7 +48,9 @@ func setupTelemetry(ctx context.Context) func(context.Context) error {
 		sdktrace.WithResource(res),
 	)
 	mp := sdkmetric.NewMeterProvider(
-		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExp)),
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExp,
+			sdkmetric.WithInterval(15*time.Second),
+		)),
 		sdkmetric.WithResource(res),
 	)
 	otel.SetTracerProvider(tp)
