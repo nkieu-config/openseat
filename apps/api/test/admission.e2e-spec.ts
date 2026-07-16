@@ -8,7 +8,7 @@ import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 process.env.THROTTLE_LIMIT = '100000';
-process.env.GATE_ADMISSION_SECRET = 'e2e-admission-secret';
+process.env.GATE_ADMISSION_SECRET = 'gate-dev-admission-secret';
 
 function b64url(input: string): string {
   return Buffer.from(input).toString('base64url');

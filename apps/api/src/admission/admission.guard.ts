@@ -9,8 +9,6 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import type { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 
-const DEV_ADMISSION_SECRET = 'gate-dev-admission-secret';
-
 function safeEqual(a: string, b: string): boolean {
   const bufferA = Buffer.from(a);
   const bufferB = Buffer.from(b);
@@ -28,8 +26,7 @@ export class AdmissionGuard implements CanActivate {
     private readonly prisma: PrismaService,
     config: ConfigService,
   ) {
-    this.secret =
-      config.get<string>('GATE_ADMISSION_SECRET') ?? DEV_ADMISSION_SECRET;
+    this.secret = config.getOrThrow<string>('GATE_ADMISSION_SECRET');
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

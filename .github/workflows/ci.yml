@@ -76,6 +76,9 @@ jobs:
     env:
       DATABASE_URL: postgresql://openseat:openseat@localhost:5432/openseat
       REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-test-jwt-secret
+      PAYMOCK_WEBHOOK_SECRET: paymock-dev-webhook-secret
+      GATE_ADMISSION_SECRET: gate-dev-admission-secret
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

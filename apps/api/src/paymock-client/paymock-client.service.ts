@@ -16,10 +16,7 @@ export class PaymockClientService {
   constructor(private readonly config: ConfigService) {}
 
   webhookSecret(): string {
-    return (
-      this.config.get<string>('PAYMOCK_WEBHOOK_SECRET') ??
-      'paymock-dev-webhook-secret'
-    );
+    return this.config.getOrThrow<string>('PAYMOCK_WEBHOOK_SECRET');
   }
 
   async createIntent(input: {
