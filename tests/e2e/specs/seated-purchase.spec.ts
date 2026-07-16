@@ -8,7 +8,9 @@ test('a buyer picks a seat, pays, and gets a ticket', async ({ page }) => {
   await seat(page, label).click();
   await expectSeatStatus(page, label, 'yours');
 
-  const form = page.locator('form').filter({ has: page.getByRole('button', { name: 'Claim 1 seat' }) });
+  const form = page
+    .locator('form')
+    .filter({ has: page.getByRole('button', { name: 'Claim 1 seat' }) });
   await form.getByLabel('Your name').fill('E2E Buyer');
   await form.getByLabel('Email for your tickets').fill(`e2e-${Date.now()}@openseat.test`);
   await page.getByRole('button', { name: 'Claim 1 seat' }).click();

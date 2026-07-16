@@ -14,9 +14,14 @@ export const test = base.extend({
 
 export { expect };
 
-export async function demoContext(browser: Browser, role: DemoRole): Promise<BrowserContext> {
-  const context = await browser.newContext();
+export async function guestContext(browser: Browser): Promise<BrowserContext> {
+  const context = await browser.newContext({ baseURL: WEB });
   await context.addCookies([ENGLISH_LOCALE]);
+  return context;
+}
+
+export async function demoContext(browser: Browser, role: DemoRole): Promise<BrowserContext> {
+  const context = await guestContext(browser);
   const response = await context.request.post(`${WEB}/api/demo/login`, { data: { role } });
   if (!response.ok()) {
     throw new Error(`demo login (${role}) failed: ${response.status()} ${await response.text()}`);
