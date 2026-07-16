@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { GraphQLModule } from '@nestjs/graphql';
@@ -23,6 +23,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { QueuesModule } from './queues/queues.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SeatmapsModule } from './seatmaps/seatmaps.module';
+import { TelemetryExceptionFilter } from './telemetry/telemetry-exception.filter';
 
 @Module({
   imports: [
@@ -76,6 +77,9 @@ import { SeatmapsModule } from './seatmaps/seatmaps.module';
     NotificationsModule,
     HealthModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: GqlThrottlerGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: GqlThrottlerGuard },
+    { provide: APP_FILTER, useClass: TelemetryExceptionFilter },
+  ],
 })
 export class AppModule {}
