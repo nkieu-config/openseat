@@ -1,6 +1,6 @@
 # OpenSeat Runbook
 
-How to detect, diagnose, and mitigate the five incidents most likely to hit this deployment. Telemetry lives in Grafana Cloud (dashboard: **OpenSeat Ops**, exported to `docs/observability/openseat-ops-dashboard.json`); services export OTLP directly per ADR 0009.
+How to detect, diagnose, and mitigate the six incidents most likely to hit this deployment. Telemetry lives in Grafana Cloud (dashboard: **OpenSeat Ops**, exported to `docs/observability/openseat-ops-dashboard.json`); services export OTLP directly per ADR 0009.
 
 Conventions used below:
 
@@ -47,6 +47,14 @@ Conventions used below:
 **Diagnose.** In Tempo, `{ resource.service.name = "openseat-api" && duration > 500ms }` then open the slowest traces — the auto-instrumented `pg` spans show which query burns the time. Hold-acquisition conflicts (`holds_acquired_total{result="conflict"}`) rising alongside is contention on hot seats, which is expected during a drop; uniform slowness across unrelated queries is the Neon free-tier compute limit.
 
 **Mitigate.** Contention: nothing to fix — the `INSERT … ON CONFLICT` path is designed to lose fast (ADR 0002). General saturation: Neon free tier autosuspends and shares compute; sustained load needs the paid tier or the AWS path (`docs/aws-production.md`, RDS sizing). Long term the read-heavy dashboard queries move to a replica per that document.
+
+## 6. PayMock asleep — checkout cannot start
+
+**Detect.** Buyers get `502 The payment provider is unavailable — try again shortly` the moment they submit an order, while the RED row stays healthy: the API is fine, its dependency is not. `orders_paid_total` flatlines even though holds keep being won, and no `webhook_events_total` movement follows — unlike incident 3, no intent was ever created, so there is no webhook to wait for. The API answers 502, so a large enough burst trips the 5xx alert.
+
+**Diagnose.** PayMock is a Render free service and is *allowed* to sleep — the keep-alive cron deliberately covers only the API (ADR 0009's hosting trade-off). Confirm with `{service_name="openseat-api"} | json |= "paymock"`, or open the checkout trace in Tempo and read the failed outbound span to the PayMock origin. A cold start measured **22.5 s** on 2026-07-16, far past the client's timeout, which is why the first buyer after an idle period always eats a 502 and a retry moments later succeeds.
+
+**Mitigate.** Wake it — `curl -sS https://<paymock-origin>/health` — then retry; the next attempt succeeds. Nothing is stranded: `createIntent` runs *after* the order transaction commits, and its failure path cancels the order (`expireOrder(orderId, 'canceled')` in `orders.service.ts`), releasing the seats in one transaction instead of holding them for the 15-minute payment window. A PayMock nap therefore leaves a trail of `canceled` orders, never stuck `awaiting_payment` ones. Ping `/health` before recording a demo.
 
 ## Escalation notes
 

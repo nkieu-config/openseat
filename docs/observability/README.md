@@ -9,7 +9,7 @@ The committed half of M7 (see `docs/specs/2026-07-16-m7-observability-design.md`
 Proof it works in production:
 
 - ![Cross-language trace](trace-web-to-gate.png) — **`trace-web-to-gate.png`**: one trace, two languages. The browser's `fetch` span (`openseat-web`, JavaScript via Faro) is the parent of `POST /gate/{eventId}/join` (`openseat-gate`, Go). W3C `traceparent` survives the cross-origin hop, which is the whole point of instrumenting both sides with OpenTelemetry instead of a vendor SDK. Found with `{ resource.service.name = "openseat-web" } && { resource.service.name = "openseat-gate" }`.
-- **`dashboard.png`** — the live dashboard: queue depth spiking to ~950 and draining to zero under the admitter's token bucket, holds split won/conflict, admissions split valid/rejected.
+- **`dashboard.png`** — the live dashboard with every row fed by real production traffic: RED across the API, the full funnel (10 holds won beside 4 lost to conflict → 1 order paid → 2 tickets checked in), `webhook_events_total` showing `processed 1` next to `duplicate 1` — PayMock's deliberate double-send meeting the `provider_event_id` dedup — and the queue draining from 509 to zero under the admitter's token bucket.
 - **`alert-firing.png`** — the 5xx alert in its firing state.
 
 ## Import the dashboard
