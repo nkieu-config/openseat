@@ -18,7 +18,7 @@ async function bootstrap() {
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.enableCors({
-    origin: process.env.WEB_ORIGIN?.split(',') ?? true,
+    origin: process.env.WEB_ORIGIN?.split(',') ?? false,
     credentials: true,
   });
   app.enableShutdownHooks();

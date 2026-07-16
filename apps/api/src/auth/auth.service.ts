@@ -12,6 +12,7 @@ import { OAuth2Client, type TokenPayload } from 'google-auth-library';
 import { PrismaService } from '../prisma/prisma.service';
 import type { User } from '../generated/prisma/client';
 import { Prisma } from '../generated/prisma/client';
+import { MAX_DISPLAY_NAME_LENGTH } from './auth.constants';
 
 export type PublicUser = {
   id: string;
@@ -28,6 +29,13 @@ export type AuthTokens = {
 
 const REFRESH_TOKEN_BYTES = 48;
 const DEFAULT_REFRESH_TTL_DAYS = 30;
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2002'
+  );
+}
 
 function toPublicUser(user: User): PublicUser {
   return {
@@ -72,10 +80,7 @@ export class AuthService {
       });
       return { user: toPublicUser(user), tokens: await this.issueTokens(user) };
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
+      if (isUniqueViolation(error)) {
         throw new ConflictException(
           'An account with this email already exists',
         );
@@ -130,7 +135,7 @@ export class AuthService {
     const email = payload.email.trim().toLowerCase();
     const displayName = (payload.name?.trim() || email.split('@')[0]).slice(
       0,
-      80,
+      MAX_DISPLAY_NAME_LENGTH,
     );
     const user = await this.findOrCreateGoogleUser({
       googleId: payload.sub,
@@ -158,7 +163,7 @@ export class AuthService {
     if (byEmail) {
       return this.prisma.user.update({
         where: { id: byEmail.id },
-        data: { googleId: input.googleId },
+        data: { googleId: input.googleId, passwordHash: null },
       });
     }
 
@@ -171,10 +176,7 @@ export class AuthService {
         },
       });
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
+      if (isUniqueViolation(error)) {
         const existing = await this.prisma.user.findFirst({
           where: {
             OR: [{ googleId: input.googleId }, { email: input.email }],

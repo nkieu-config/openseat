@@ -6,6 +6,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { MAX_DISPLAY_NAME_LENGTH } from '../auth.constants';
 
 export class RegisterDto {
   @ApiProperty({ example: 'ada@example.com' })
@@ -20,6 +21,6 @@ export class RegisterDto {
 
   @ApiProperty({ example: 'Ada Lovelace' })
   @IsString()
-  @Length(1, 80)
+  @Length(1, MAX_DISPLAY_NAME_LENGTH)
   displayName!: string;
 }

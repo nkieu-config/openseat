@@ -43,7 +43,7 @@ import { SeatmapsModule } from './seatmaps/seatmaps.module';
       sortSchema: true,
       path: '/api/graphql',
       playground: false,
-      introspection: true,
+      introspection: process.env.NODE_ENV !== 'production',
       context: ({ req }: { req: unknown }) => ({ req }),
     }),
     PrismaModule,

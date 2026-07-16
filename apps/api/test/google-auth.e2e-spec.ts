@@ -124,7 +124,7 @@ describe('Google sign-in (e2e)', () => {
 
     const linked = await prisma.user.findUnique({ where: { id: existingId } });
     expect(linked?.googleId).toBe(linkSub);
-    expect(linked?.passwordHash).not.toBeNull();
+    expect(linked?.passwordHash).toBeNull();
   });
 
   it('rejects a Google account with an unverified email', async () => {
