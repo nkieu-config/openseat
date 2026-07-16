@@ -8,7 +8,7 @@ One Grafana-managed alert rule watches the API's server-error ratio and emails o
 |---|---|
 | Name | `openseat-api 5xx error rate` |
 | Datasource | the Mimir/Prometheus datasource that receives OTLP metrics |
-| Query (A) | `sum(rate({__name__=~"http_server_duration(_milliseconds)?_count", http_status_code=~"5.."}[5m])) / clamp_min(sum(rate({__name__=~"http_server_duration(_milliseconds)?_count"}[5m])), 0.001)` |
+| Query (A) | `sum(rate(http_server_duration_milliseconds_count{http_status_code=~"5.."}[5m])) / clamp_min(sum(rate(http_server_duration_milliseconds_count[5m])), 0.001)` |
 | Condition | `A > 0.05` (5% of requests) |
 | For | `5m` |
 | Evaluation | every `1m` |

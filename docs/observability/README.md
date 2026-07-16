@@ -28,19 +28,19 @@ Emitted OTel name → the counter/gauge/histogram it is, and where it is increme
 | `gate_sse_connections` | up/down counter (gauge) | `main.go` SSE handler | — |
 | `gate_queue_depth` | observable gauge | `telemetry.go` callback (ZCard per event) | `event_id` |
 
-HTTP server metrics come from `@opentelemetry/instrumentation-http` (v0.220, **old semconv by default**): histogram `http.server.duration` in **milliseconds**, with labels `http_method`, `http_status_code`, `http_route`, `service_name`.
+HTTP server metrics come from `@opentelemetry/instrumentation-http` (v0.220, **old semconv by default**): histogram `http.server.duration` in **milliseconds**, with labels `http_method`, `http_status_code`, `http_route`, `service_name`. Grafana Cloud's OTLP ingest appends the unit suffix, so it lands in Mimir as **`http_server_duration_milliseconds_bucket` / `_count` / `_sum`** — confirmed in Explore on 2026-07-16 and used verbatim by the dashboard and the alert.
 
-## The HTTP-name note (read if the RED row is empty)
+## If the RED row is empty
 
-Grafana Cloud's OTLP ingest may or may not append the unit suffix, so the histogram lands as either `http_server_duration_milliseconds_*` or `http_server_duration_*`. The dashboard queries use `{__name__=~"http_server_duration(_milliseconds)?_bucket"}` to match **both** — no edit needed in the common cases.
+First check the **Metrics (Mimir)** dropdown at the top of the dashboard is actually set — a datasource variable imports unselected, and every panel silently returns nothing until it is.
 
-If the RED panels are still empty, confirm the real names in **Explore**:
+If the datasource is set and RED is still empty, re-confirm the metric names:
 
 ```promql
 group by (__name__) ({__name__=~"http_server_.+"})
 ```
 
-and, if the app opted into stable HTTP semconv (`OTEL_SEMCONV_STABILITY_OPT_IN=http`), the metric becomes `http_server_request_duration_seconds_*` with label `http_response_status_code` — widen the regex to `http_server_(request_)?duration.*` and switch the status label accordingly.
+The name would only move if the app opted into stable HTTP semconv (`OTEL_SEMCONV_STABILITY_OPT_IN=http`), which renames it to `http_server_request_duration_seconds_*` and swaps the status label to `http_response_status_code`.
 
 ## Correlate logs ↔ traces
 
