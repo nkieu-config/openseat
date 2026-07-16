@@ -106,21 +106,23 @@
     },
     {
       "id": 11,
-      "type": "timeseries",
+      "type": "bargauge",
       "title": "Holds acquired (won vs conflict)",
       "gridPos": { "x": 0, "y": 10, "w": 8, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "${prometheus}" },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (result) (rate(holds_acquired_total[5m]))",
-          "legendFormat": "{{result}}"
+          "expr": "sum by (result) (increase(holds_acquired_total[$__range]))",
+          "legendFormat": "{{result}}",
+          "instant": true
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
       "options": {
-        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "displayMode": "gradient",
+        "orientation": "horizontal"
       }
     },
     {
@@ -178,21 +180,23 @@
     },
     {
       "id": 14,
-      "type": "timeseries",
+      "type": "bargauge",
       "title": "Webhook events by outcome",
       "gridPos": { "x": 16, "y": 10, "w": 8, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "${prometheus}" },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (outcome) (rate(webhook_events_total[5m]))",
-          "legendFormat": "{{outcome}}"
+          "expr": "sum by (outcome) (increase(webhook_events_total[$__range]))",
+          "legendFormat": "{{outcome}}",
+          "instant": true
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
       "options": {
-        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "displayMode": "gradient",
+        "orientation": "horizontal"
       }
     },
     {
@@ -239,21 +243,23 @@
     },
     {
       "id": 23,
-      "type": "timeseries",
+      "type": "bargauge",
       "title": "Admissions verified by result",
       "gridPos": { "x": 16, "y": 19, "w": 8, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "${prometheus}" },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (result) (rate(admissions_verified_total[5m]))",
-          "legendFormat": "{{result}}"
+          "expr": "sum by (result) (increase(admissions_verified_total[$__range]))",
+          "legendFormat": "{{result}}",
+          "instant": true
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
       "options": {
-        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "displayMode": "gradient",
+        "orientation": "horizontal"
       }
     }
   ]
