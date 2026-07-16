@@ -13,6 +13,9 @@
     "typecheck": {
       "dependsOn": ["^build", "db:generate"]
     },
+    "web#typecheck": {
+      "dependsOn": ["build"]
+    },
     "test": {
       "dependsOn": ["^build", "db:generate"]
     },
