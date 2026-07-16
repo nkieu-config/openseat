@@ -38,6 +38,26 @@ function seatLabel(seat: SeatInfo): string {
   return `${seat.section} ${seat.rowLabel}${seat.number}`;
 }
 
+function HoldCountdown({ expiresAt }: { expiresAt: number | null }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (expiresAt === null) {
+      return;
+    }
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+  if (expiresAt === null) {
+    return null;
+  }
+  return (
+    <p className="font-mono text-sm tabular-nums text-muted-foreground">
+      Held for{" "}
+      <span className="text-primary">{formatCountdown(expiresAt - now)}</span>
+    </p>
+  );
+}
+
 function formatCountdown(msLeft: number): string {
   const totalSeconds = Math.max(0, Math.floor(msLeft / 1000));
   const minutes = Math.floor(totalSeconds / 60);
@@ -52,7 +72,6 @@ export function SeatPicker({ eventId }: { eventId: string }) {
   const [failed, setFailed] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [now, setNow] = useState(() => Date.now());
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [claiming, setClaiming] = useState(false);
@@ -142,7 +161,6 @@ export function SeatPicker({ eventId }: { eventId: string }) {
     }
     const interval = setInterval(() => {
       const currentNow = Date.now();
-      setNow(currentNow);
       if (earliestExpiryRef.current !== null && earliestExpiryRef.current <= currentNow) {
         earliestExpiryRef.current = null;
         toast.error("Your seat holds expired — pick them again");
@@ -250,7 +268,6 @@ export function SeatPicker({ eventId }: { eventId: string }) {
 
   const width = PAD * 2 + map.meta.maxCols * STEP - GAP;
   const height = PAD + 36 + map.meta.totalRows * STEP - GAP + PAD;
-  const msLeft = earliestExpiry === null ? null : earliestExpiry - now;
 
   return (
     <Card>
@@ -267,6 +284,7 @@ export function SeatPicker({ eventId }: { eventId: string }) {
               type="button"
               variant="outline"
               size="icon-sm"
+              className="size-11 sm:size-7"
               aria-label="Zoom out"
               onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))}
             >
@@ -276,6 +294,7 @@ export function SeatPicker({ eventId }: { eventId: string }) {
               type="button"
               variant="outline"
               size="icon-sm"
+              className="size-11 sm:size-7"
               aria-label="Zoom in"
               onClick={() => setZoom((value) => Math.min(2.5, value + 0.25))}
             >
@@ -285,6 +304,7 @@ export function SeatPicker({ eventId }: { eventId: string }) {
               type="button"
               variant="outline"
               size="icon-sm"
+              className="size-11 sm:size-7"
               aria-label="Reset view"
               onClick={() => {
                 setZoom(1);
@@ -385,19 +405,26 @@ export function SeatPicker({ eventId }: { eventId: string }) {
                       width={CELL}
                       height={CELL}
                       rx="8"
-                      className={`${fill} ${
+                      className={`${fill} outline-none transition-opacity ${
                         seat.status === "sold"
-                          ? "cursor-not-allowed"
-                          : "cursor-pointer hover:opacity-80"
-                      } transition-opacity`}
+                          ? "cursor-not-allowed stroke-foreground/40 [stroke-width:2px]"
+                          : "cursor-pointer hover:opacity-80 focus-visible:stroke-ring focus-visible:[stroke-width:2.5px]"
+                      }`}
                       style={
                         seat.mine
                           ? { filter: "drop-shadow(0 0 7px var(--seat-selected))" }
                           : undefined
                       }
                       role="button"
+                      tabIndex={seat.status === "sold" ? -1 : 0}
                       aria-label={`${seatLabel(seat)} — ${seat.mine ? "yours" : seat.status}`}
                       onClick={() => void toggleSeat(seat)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          void toggleSeat(seat);
+                        }
+                      }}
                     >
                       <title>{`${seatLabel(seat)} — ${seat.mine ? "yours" : seat.status}`}</title>
                     </rect>
@@ -443,11 +470,7 @@ export function SeatPicker({ eventId }: { eventId: string }) {
                 ))
               )}
             </div>
-            {msLeft !== null ? (
-              <p className="font-mono text-sm tabular-nums text-muted-foreground">
-                Held for <span className="text-primary">{formatCountdown(msLeft)}</span>
-              </p>
-            ) : null}
+            <HoldCountdown expiresAt={earliestExpiry} />
           </div>
           {!user && mySeats.length > 0 ? (
             <div className="grid gap-3 sm:grid-cols-2">

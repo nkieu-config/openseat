@@ -87,7 +87,7 @@
   --seat-available: oklch(0.85 0.03 265);
   --seat-selected: oklch(0.62 0.14 70);
   --seat-held: oklch(0.55 0.15 277);
-  --seat-sold: oklch(0.9 0.005 262);
+  --seat-sold: oklch(0.77 0.006 262);
   --console-panel: oklch(0.975 0.008 85);
   --console-line: oklch(0.22 0.03 262 / 12%);
   --console-groove: oklch(0.92 0.014 85);
