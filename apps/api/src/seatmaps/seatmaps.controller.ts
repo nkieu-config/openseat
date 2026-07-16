@@ -11,6 +11,7 @@ import {
   ApiBearerAuth,
   ApiHeader,
   ApiProperty,
+  ApiPropertyOptional,
   ApiTags,
 } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -19,6 +20,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsInt,
+  IsOptional,
   IsString,
   Length,
   Max,
@@ -62,13 +64,35 @@ export class SeatMapSectionDto {
   @Min(0)
   @Max(100_000_000)
   priceSatang!: number;
+
+  @ApiPropertyOptional({
+    minimum: 0,
+    maximum: 80,
+    description: 'Grid column of the section origin (editor layout)',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(80)
+  x?: number;
+
+  @ApiPropertyOptional({
+    minimum: 0,
+    maximum: 200,
+    description: 'Grid row of the section origin (editor layout)',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(200)
+  y?: number;
 }
 
 export class CreateSeatMapDto {
   @ApiProperty({ type: [SeatMapSectionDto] })
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(4)
+  @ArrayMaxSize(12)
   @ValidateNested({ each: true })
   @Type(() => SeatMapSectionDto)
   sections!: SeatMapSectionDto[];

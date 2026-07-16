@@ -972,6 +972,18 @@
             "minimum": 0,
             "maximum": 100000000,
             "description": "Price in satang; 0 = free"
+          },
+          "x": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 80,
+            "description": "Grid column of the section origin (editor layout)"
+          },
+          "y": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 200,
+            "description": "Grid row of the section origin (editor layout)"
           }
         },
         "required": [

@@ -29,11 +29,22 @@ export class SeatmapsService {
     if (new Set(tierNames).size !== tierNames.length) {
       throw new BadRequestException('Each section needs a distinct tier name');
     }
+    const sectionNames = dto.sections.map((section) => section.name.trim());
+    if (new Set(sectionNames).size !== sectionNames.length) {
+      throw new BadRequestException('Each section needs a distinct name');
+    }
 
-    const maxCols = Math.max(...dto.sections.map((section) => section.cols));
+    const positioned = dto.sections.some(
+      (section) => section.x !== undefined && section.y !== undefined,
+    );
+    const autoMaxCols = Math.max(
+      ...dto.sections.map((section) => section.cols),
+    );
 
     return this.prisma.$transaction(async (tx) => {
       let yCursor = 0;
+      let maxCols = 0;
+      let maxRow = 0;
       const sectionMeta: {
         name: string;
         yStart: number;
@@ -43,11 +54,16 @@ export class SeatmapsService {
       }[] = [];
 
       const seatMap = await tx.seatMap.create({
-        data: { eventId, template: 'theater', meta: {} },
+        data: {
+          eventId,
+          template: positioned ? 'custom' : 'theater',
+          meta: {},
+        },
       });
 
       for (const section of dto.sections) {
-        const xOffset = Math.floor((maxCols - section.cols) / 2);
+        const x = section.x ?? Math.floor((autoMaxCols - section.cols) / 2);
+        const y = section.y ?? yCursor;
         const ticketType = await tx.ticketType.create({
           data: {
             eventId,
@@ -68,29 +84,29 @@ export class SeatmapsService {
               section: section.name.trim(),
               rowLabel: ROW_LETTERS[rowIndex % ROW_LETTERS.length],
               number: colIndex + 1,
-              x: xOffset + colIndex,
-              y: yCursor + rowIndex,
+              x: x + colIndex,
+              y: y + rowIndex,
             })),
           ).flat(),
         });
         sectionMeta.push({
           name: section.name.trim(),
-          yStart: yCursor,
+          yStart: y,
           rows: section.rows,
           cols: section.cols,
-          xOffset,
+          xOffset: x,
         });
-        yCursor += section.rows + SECTION_GAP_ROWS;
+        maxCols = Math.max(maxCols, x + section.cols);
+        maxRow = Math.max(maxRow, y + section.rows);
+        if (section.y === undefined) {
+          yCursor = y + section.rows + SECTION_GAP_ROWS;
+        }
       }
 
       return tx.seatMap.update({
         where: { id: seatMap.id },
         data: {
-          meta: {
-            maxCols,
-            totalRows: yCursor - SECTION_GAP_ROWS,
-            sections: sectionMeta,
-          },
+          meta: { maxCols, totalRows: maxRow, sections: sectionMeta },
         },
         include: { _count: { select: { seats: true } } },
       });
