@@ -16,6 +16,7 @@ import type { Request, Response } from 'express';
 import { AuthService, AuthTokens } from './auth.service';
 import { CurrentUser, type RequestUser } from './current-user.decorator';
 import { JwtAuthGuard } from './guards';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -68,6 +69,18 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const { user, tokens } = await this.auth.login(dto);
+    this.setRefreshCookie(res, tokens);
+    return { user, accessToken: tokens.accessToken };
+  }
+
+  @Post('google')
+  @HttpCode(200)
+  @Throttle(AUTH_THROTTLE)
+  async google(
+    @Body() dto: GoogleLoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { user, tokens } = await this.auth.loginWithGoogle(dto.credential);
     this.setRefreshCookie(res, tokens);
     return { user, accessToken: tokens.accessToken };
   }

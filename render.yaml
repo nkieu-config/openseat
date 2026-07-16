@@ -40,6 +40,8 @@ services:
         value: https://openseat-paymock.onrender.com
       - key: API_PUBLIC_URL
         value: https://openseat-api.onrender.com
+      - key: GOOGLE_CLIENT_ID
+        sync: false
       - fromGroup: paymock-shared
       - fromGroup: gate-shared
 

@@ -1,12 +1,14 @@
 import {
   ConflictException,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { createHash, randomBytes } from 'crypto';
+import { OAuth2Client, type TokenPayload } from 'google-auth-library';
 import { PrismaService } from '../prisma/prisma.service';
 import type { User } from '../generated/prisma/client';
 import { Prisma } from '../generated/prisma/client';
@@ -38,6 +40,8 @@ function toPublicUser(user: User): PublicUser {
 
 @Injectable()
 export class AuthService {
+  private readonly googleClient = new OAuth2Client();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
@@ -98,6 +102,90 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
     return { user: toPublicUser(user), tokens: await this.issueTokens(user) };
+  }
+
+  async loginWithGoogle(
+    credential: string,
+  ): Promise<{ user: PublicUser; tokens: AuthTokens }> {
+    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
+    if (!clientId) {
+      throw new ServiceUnavailableException('Google sign-in is not configured');
+    }
+
+    let payload: TokenPayload | undefined;
+    try {
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken: credential,
+        audience: clientId,
+      });
+      payload = ticket.getPayload();
+    } catch {
+      throw new UnauthorizedException('Invalid Google credential');
+    }
+
+    if (!payload?.sub || !payload.email || payload.email_verified !== true) {
+      throw new UnauthorizedException('Google account could not be verified');
+    }
+
+    const email = payload.email.trim().toLowerCase();
+    const displayName = (payload.name?.trim() || email.split('@')[0]).slice(
+      0,
+      80,
+    );
+    const user = await this.findOrCreateGoogleUser({
+      googleId: payload.sub,
+      email,
+      displayName,
+    });
+    return { user: toPublicUser(user), tokens: await this.issueTokens(user) };
+  }
+
+  private async findOrCreateGoogleUser(input: {
+    googleId: string;
+    email: string;
+    displayName: string;
+  }): Promise<User> {
+    const byGoogleId = await this.prisma.user.findUnique({
+      where: { googleId: input.googleId },
+    });
+    if (byGoogleId) {
+      return byGoogleId;
+    }
+
+    const byEmail = await this.prisma.user.findUnique({
+      where: { email: input.email },
+    });
+    if (byEmail) {
+      return this.prisma.user.update({
+        where: { id: byEmail.id },
+        data: { googleId: input.googleId },
+      });
+    }
+
+    try {
+      return await this.prisma.user.create({
+        data: {
+          email: input.email,
+          displayName: input.displayName,
+          googleId: input.googleId,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const existing = await this.prisma.user.findFirst({
+          where: {
+            OR: [{ googleId: input.googleId }, { email: input.email }],
+          },
+        });
+        if (existing) {
+          return existing;
+        }
+      }
+      throw error;
+    }
   }
 
   async issueTokens(user: User): Promise<AuthTokens> {
