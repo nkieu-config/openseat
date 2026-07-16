@@ -12,6 +12,7 @@ allowBuilds:
   argon2: true
   msgpackr-extract: true
   prisma: true
+  protobufjs: false
   sharp: true
   unrs-resolver: true
 
@@ -30,3 +31,4 @@ onlyBuiltDependencies:
 ignoredBuiltDependencies:
   - '@apollo/protobufjs'
   - '@scarf/scarf'
+  - protobufjs
