@@ -11,6 +11,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "e2e": "pnpm --filter @openseat/e2e e2e",
     "format": "prettier --write ."
   },
   "devDependencies": {

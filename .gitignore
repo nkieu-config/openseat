@@ -25,3 +25,7 @@ pnpm-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+tests/e2e/report/
+tests/e2e/test-results/
+tests/e2e/playwright/.cache/
