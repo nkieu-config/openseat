@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 
 export const API = process.env.E2E_API ?? 'http://localhost:4000';
 export const WEB = process.env.E2E_WEB ?? 'http://localhost:3000';
+export const GATE = process.env.E2E_GATE ?? 'http://localhost:4200';
 
 export interface TicketType {
   id: string;
@@ -30,6 +31,18 @@ export async function getEvent(request: APIRequestContext, slug: string): Promis
     throw new Error(`getEvent(${slug}) failed: ${response.status()} ${await response.text()}`);
   }
   return (await response.json()) as EventSummary;
+}
+
+export async function simulateCrowd(
+  request: APIRequestContext,
+  eventId: string,
+  count: number,
+): Promise<{ added: number; total: number }> {
+  const response = await request.post(`${GATE}/gate/${eventId}/simulate`, { data: { count } });
+  if (!response.ok()) {
+    throw new Error(`simulateCrowd failed: ${response.status()} ${await response.text()}`);
+  }
+  return (await response.json()) as { added: number; total: number };
 }
 
 export async function issueFreeGaTicket(
