@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"time"
 
@@ -26,6 +27,7 @@ var (
 func setupTelemetry(ctx context.Context) func(context.Context) error {
 	noop := func(context.Context) error { return nil }
 	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" {
+		log.Printf("telemetry: disabled (OTEL_EXPORTER_OTLP_ENDPOINT is unset)")
 		return noop
 	}
 	res, err := resource.New(ctx,
@@ -33,14 +35,19 @@ func setupTelemetry(ctx context.Context) func(context.Context) error {
 		resource.WithFromEnv(),
 	)
 	if err != nil {
-		return noop
+		log.Printf("telemetry: resource detection degraded: %v", err)
+	}
+	if res == nil {
+		res = resource.Default()
 	}
 	traceExp, err := otlptracehttp.New(ctx)
 	if err != nil {
+		log.Printf("telemetry: disabled (trace exporter: %v)", err)
 		return noop
 	}
 	metricExp, err := otlpmetrichttp.New(ctx)
 	if err != nil {
+		log.Printf("telemetry: disabled (metric exporter: %v)", err)
 		return noop
 	}
 	tp := sdktrace.NewTracerProvider(
@@ -59,6 +66,9 @@ func setupTelemetry(ctx context.Context) func(context.Context) error {
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
+	log.Printf("telemetry: exporting to %s as %s",
+		os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		envOr("OTEL_SERVICE_NAME", "openseat-gate"))
 	return func(shutdownCtx context.Context) error {
 		traceErr := tp.Shutdown(shutdownCtx)
 		metricErr := mp.Shutdown(shutdownCtx)
