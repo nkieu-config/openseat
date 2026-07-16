@@ -60,64 +60,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [applySession]);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const { data, error, response } = await api.POST("/api/auth/login", {
-        body: { email, password },
-      });
+  const postSession = useCallback(
+    async (
+      request: Promise<{
+        data?: unknown;
+        error?: unknown;
+        response: Response;
+      }>,
+      fallbackMessage: string,
+    ) => {
+      const { data, error, response } = await request;
       if (!response.ok || data === undefined) {
-        throw new Error(apiErrorMessage(error, "Login failed"));
+        throw new Error(apiErrorMessage(error, fallbackMessage));
       }
       const session = data as unknown as AuthResponse;
       applySession(session);
       return session.user;
     },
     [applySession],
+  );
+
+  const login = useCallback(
+    (email: string, password: string) =>
+      postSession(
+        api.POST("/api/auth/login", { body: { email, password } }),
+        "Login failed",
+      ),
+    [postSession],
   );
 
   const loginWithGoogle = useCallback(
-    async (credential: string) => {
-      const { data, error, response } = await api.POST("/api/auth/google", {
-        body: { credential },
-      });
-      if (!response.ok || data === undefined) {
-        throw new Error(apiErrorMessage(error, "Google sign-in failed"));
-      }
-      const session = data as unknown as AuthResponse;
-      applySession(session);
-      return session.user;
-    },
-    [applySession],
+    (credential: string) =>
+      postSession(
+        api.POST("/api/auth/google", { body: { credential } }),
+        "Google sign-in failed",
+      ),
+    [postSession],
   );
 
   const register = useCallback(
-    async (input: { email: string; password: string; displayName: string }) => {
-      const { data, error, response } = await api.POST("/api/auth/register", {
-        body: input,
-      });
-      if (!response.ok || data === undefined) {
-        throw new Error(apiErrorMessage(error, "Registration failed"));
-      }
-      const session = data as unknown as AuthResponse;
-      applySession(session);
-      return session.user;
-    },
-    [applySession],
+    (input: { email: string; password: string; displayName: string }) =>
+      postSession(
+        api.POST("/api/auth/register", { body: input }),
+        "Registration failed",
+      ),
+    [postSession],
   );
 
   const loginDemo = useCallback(
-    async (role: "buyer" | "organizer") => {
-      const { data, error, response } = await api.POST("/api/demo/login", {
-        body: { role },
-      });
-      if (!response.ok || data === undefined) {
-        throw new Error(apiErrorMessage(error, "Demo login failed"));
-      }
-      const session = data as unknown as AuthResponse;
-      applySession(session);
-      return session.user;
-    },
-    [applySession],
+    (role: "buyer" | "organizer") =>
+      postSession(
+        api.POST("/api/demo/login", { body: { role } }),
+        "Demo login failed",
+      ),
+    [postSession],
   );
 
   const logout = useCallback(async () => {

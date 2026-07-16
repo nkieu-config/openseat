@@ -15,7 +15,6 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import { formatEventDate, formatPrice } from "@/lib/format";
-import { createEventSocket } from "@/lib/realtime";
 
 function OrderSkeleton() {
   return (
@@ -97,13 +96,25 @@ function OrderView() {
     if (!order || order.status !== "awaiting_payment") {
       return;
     }
-    const socket = createEventSocket(order.event.id);
-    socket.emit("join-order", { orderId: order.id, guestToken: order.guestToken });
-    socket.on("order", () => setReloadKey((key) => key + 1));
+    let cancelled = false;
+    let disconnect: (() => void) | null = null;
+    void import("@/lib/realtime").then(({ createEventSocket }) => {
+      if (cancelled) {
+        return;
+      }
+      const socket = createEventSocket(order.event.id);
+      socket.emit("join-order", {
+        orderId: order.id,
+        guestToken: order.guestToken,
+      });
+      socket.on("order", () => setReloadKey((key) => key + 1));
+      disconnect = () => socket.disconnect();
+    });
     const poll = setInterval(() => setReloadKey((key) => key + 1), 10_000);
     return () => {
+      cancelled = true;
       clearInterval(poll);
-      socket.disconnect();
+      disconnect?.();
     };
   }, [order]);
 
