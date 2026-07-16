@@ -325,7 +325,6 @@ export function SeatPicker({ eventId }: { eventId: string }) {
             aria-label="Interactive seat map"
             onPointerDown={(event) => {
               dragState.current = { x: event.clientX, y: event.clientY, moved: false };
-              event.currentTarget.setPointerCapture(event.pointerId);
             }}
             onPointerMove={(event) => {
               const drag = dragState.current;
@@ -334,9 +333,10 @@ export function SeatPicker({ eventId }: { eventId: string }) {
               }
               const dx = event.clientX - drag.x;
               const dy = event.clientY - drag.y;
-              if (Math.abs(dx) + Math.abs(dy) > 4) {
+              if (!drag.moved && Math.abs(dx) + Math.abs(dy) > 4) {
                 drag.moved = true;
                 suppressClick.current = true;
+                event.currentTarget.setPointerCapture(event.pointerId);
               }
               if (drag.moved) {
                 setPan((current) => ({ x: current.x + dx, y: current.y + dy }));
