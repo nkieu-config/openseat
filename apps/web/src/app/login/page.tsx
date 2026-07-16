@@ -45,7 +45,7 @@ function LoginForm() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>Log in</CardTitle>
+        <CardTitle as="h1">Log in</CardTitle>
         <CardDescription>Welcome back to OpenSeat.</CardDescription>
       </CardHeader>
       <CardContent>

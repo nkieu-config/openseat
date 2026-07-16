@@ -46,7 +46,7 @@ export default function RegisterPage() {
     <main className="flex flex-1 items-center justify-center px-4 py-16">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Create an account</CardTitle>
+          <CardTitle as="h1">Create an account</CardTitle>
           <CardDescription>Run events or keep all your tickets in one place.</CardDescription>
         </CardHeader>
         <CardContent>

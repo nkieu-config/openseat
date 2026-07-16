@@ -15,6 +15,7 @@ import { ConsolePanel, SignalLamp } from "@/components/console/panel";
 import { TelemetryStat } from "@/components/console/telemetry";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { checkInTicket, type CheckinResult } from "@/lib/checkin";
 import { fetchEventDashboard } from "@/lib/dashboard";
 import { cn } from "@/lib/utils";
@@ -314,13 +315,14 @@ export default function CheckinConsolePage() {
                 }}
                 className="flex flex-col gap-3"
               >
+                <Label htmlFor="checkin-token">Ticket QR token</Label>
                 <Input
+                  id="checkin-token"
                   autoFocus
                   value={token}
                   onChange={(changeEvent) => setToken(changeEvent.target.value)}
                   placeholder="Scan or paste a ticket QR token"
                   className="font-mono"
-                  aria-label="Ticket QR token"
                 />
                 <Button type="submit" disabled={scanning || token.trim() === ""}>
                   {scanning ? "Checking…" : "Check in"}
@@ -341,7 +343,9 @@ export default function CheckinConsolePage() {
               ) : null}
             </ConsolePanel>
 
-            <ResultPanel result={result} />
+            <div role="status" aria-live="polite">
+              <ResultPanel result={result} />
+            </div>
           </div>
 
           <ConsolePanel
