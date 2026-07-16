@@ -4,7 +4,7 @@ Open ticketing with real-time reserved seating — create an event, share the li
 
 **Live**: [openseat-ticket.vercel.app](https://openseat-ticket.vercel.app) · [API health](https://openseat-api.onrender.com/api/health) · [API docs](https://openseat-api.onrender.com/api/docs)
 
-> Status: **M5 — Waiting room, live**. Ticket drops now open behind a live waiting room: a Go **Gate** service queues every buyer in Redis, streams their place over SSE, and admits at a controlled rate with a stateless signed token the API verifies itself (see [ADR 0007](docs/adr/0007-waiting-room-gate.md)). Try the [Midnight Drop](https://openseat-ticket.vercel.app/events/midnight-drop) — hit "Simulate a crowd" and watch your place fall. The front door is load-tested at ~13k joins/s (see [the report](docs/load-tests/gate-report.md)).
+> Status: **M6 — Complete**. The final milestone adds a drag-and-drop **seat-map editor** (hand-built SVG, undo/redo, no library), **EN/TH internationalization** on the public pages, a **light-theme** pass, and an [AWS production architecture doc](docs/aws-production.md). All six milestones are live and documented. Browse the [demo](https://openseat-ticket.vercel.app), design a room from the organizer console, or join the [Midnight Drop](https://openseat-ticket.vercel.app/events/midnight-drop) waiting room and "Simulate a crowd."
 
 ## Why this project exists
 
@@ -62,7 +62,7 @@ pnpm --filter api test:e2e
 | **M3 — Payments** ✅ | PayMock payment simulator in Go (signed + duplicated webhooks), awaiting_payment state machine with 15-minute expiry, transactional outbox for email/realtime effects, webhook dedup proven by e2e |
 | **M4 — Organizer console** ✅ | "Backstage Console" design language, sales analytics + timeline, occupancy heatmap, attendee CSV export, read-only GraphQL layer, QR check-in scanner (concurrent double-scan proven) |
 | **M5 — Waiting room** ✅ | Go **Gate** service (Redis queue, SSE positions, token-bucket admitter), stateless admission JWTs the API verifies itself, k6 load report (~13k joins/s), Simulate Crowd |
-| M6 — Seat-map editor | Drag-and-drop editor, i18n (EN/TH), demo video, AWS production architecture doc |
+| **M6 — Seat-map editor** ✅ | Drag-and-drop seat-map editor (hand-built SVG, undo/redo), EN/TH i18n on public pages, light-theme audit, [AWS production doc](docs/aws-production.md), [demo video script](docs/demo-script.md) |
 
 Deliberately out of scope: real money and refunds, ticket resale, organizer team RBAC, native mobile apps.
 

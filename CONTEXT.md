@@ -6,7 +6,7 @@ The vocabulary below is the project's source of truth for naming things — in c
 
 - **Organizer** — a user who creates and runs events. Any user can become one by creating an event.
 - **Event** — a dated occasion with a venue name, a seat map and/or GA ticket types, and a sales window. Has `sale_opens_at`; may run in drop mode.
-- **Seat map** — the versioned layout (sections, rows, seats) attached to an event. Starts from a template until the editor (M6) exists.
+- **Seat map** — the versioned layout (sections, rows, seats) attached to an event. Built from a template or the drag-and-drop editor (M6), then materialized into individual seats.
 - **Section / Row / Seat** — the physical hierarchy. A seat is the unit of inventory for reserved seating.
 - **Price tier** — a named price level assigned to seats (e.g. VIP, Standard).
 - **GA (General Admission)** — untiered standing/zone tickets sold by quantity, not by seat.

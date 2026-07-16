@@ -11,7 +11,7 @@ The single reference for how the web app looks and behaves. If a rule here confl
 
 ## Theme policy
 
-- **Dark is canonical.** The brand (amber-on-midnight) is designed dark-first; every new screen is reviewed on dark. Light is supported best-effort and gets a dedicated audit in M6.
+- **Dark is canonical.** The brand (amber-on-midnight) is designed dark-first; every new screen is reviewed on dark. Light is supported and was audited in M6 — every token (including the console and seat-state families) carries a light value, verified across the landing and the Backstage Console.
 - Themes are managed by `next-themes` (`attribute="class"`, default `dark`, system detection off) via `ThemeProvider`; the toggle lives in the footer. Never hardcode the `dark` class or read `prefers-color-scheme` directly.
 - Both token blocks set `color-scheme`, so native controls (date pickers, scrollbars) follow the theme.
 - Mobile browser chrome color comes from the `viewport.themeColor` export in `layout.tsx`.
