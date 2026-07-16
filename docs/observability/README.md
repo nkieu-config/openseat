@@ -6,6 +6,12 @@ The committed half of M7 (see `docs/specs/2026-07-16-m7-observability-design.md`
 - [`alert-rule.md`](alert-rule.md) — the single 5xx error-rate alert and how to prove it fires.
 - `../runbook.md` — five incidents mapped to these panels and queries.
 
+Proof it works in production:
+
+- ![Cross-language trace](trace-web-to-gate.png) — **`trace-web-to-gate.png`**: one trace, two languages. The browser's `fetch` span (`openseat-web`, JavaScript via Faro) is the parent of `POST /gate/{eventId}/join` (`openseat-gate`, Go). W3C `traceparent` survives the cross-origin hop, which is the whole point of instrumenting both sides with OpenTelemetry instead of a vendor SDK. Found with `{ resource.service.name = "openseat-web" } && { resource.service.name = "openseat-gate" }`.
+- **`dashboard.png`** — the live dashboard: queue depth spiking to ~950 and draining to zero under the admitter's token bucket, holds split won/conflict, admissions split valid/rejected.
+- **`alert-firing.png`** — the 5xx alert in its firing state.
+
 ## Import the dashboard
 
 1. Grafana → **Dashboards → New → Import → Upload JSON file** → `openseat-ops-dashboard.json`.
@@ -35,6 +41,16 @@ HTTP server metrics come from `@opentelemetry/instrumentation-http` (v0.220, **o
 `rate()` needs at least two samples inside its window. Both SDKs push metrics on an interval, so the window must comfortably exceed it — and Grafana's `$__rate_interval` does not know that interval (it derives from the *datasource's* scrape-interval setting, which OTLP push ignores). With the SDK default of 60s, `$__rate_interval` resolved to ~60s, every window held a single sample, and **every rate panel rendered empty while the metrics were plainly there in Explore**. A fixed `[5m]` is immune to that mismatch, so the dashboard works on import without anyone tuning the datasource.
 
 The exporters push every **15s** (`exportIntervalMillis` in `apps/api/src/telemetry/tracing.ts`, `WithInterval` in `services/gate/telemetry.go`) rather than the 60s default: this product's interesting dynamics are second-scale — a waiting-room queue drains 250 entrants in ~30s — and 60s resolution flattens that curve into a couple of points.
+
+## Why the funnel reads raw counters, not `increase()`
+
+`increase()` extrapolates to the edges of its window. That is invisible at real traffic volumes but grossly wrong at demo volume: four holds rendered as `won 2.03 / conflict 3.04`, and a single admission rendered as `0`. Seat counts are integers — a funnel that shows 3.04 conflicts reads as broken, however defensible the maths. The funnel panels therefore read the counter directly (`sum by (result) (holds_acquired_total)`), which is exact. The trade-off: these totals accumulate from process start rather than following the time picker, and reset on deploy. At real volume, `increase()` would be the better choice.
+
+Panels whose counter may never have been incremented (`orders_paid_total`, `tickets_checked_in_total`) append `or vector(0)`: an absent series renders as "No data", which looks like breakage when the honest answer is zero. The error-rate stat needs the same guard on its **numerator** — with no 5xx anywhere, `sum(rate(...{5xx}))` is an empty set and `empty / anything` is empty, so the panel showed "No data" until it was wrapped in `or vector(0)`.
+
+## Known limitation: the waiting room's SSE stream is not traced
+
+`joinQueue()` uses `fetch`, which Faro instruments — that is the span in `trace-web-to-gate.png`. The queue page then holds an `EventSource` (SSE) stream, and **OpenTelemetry's browser instrumentation does not patch `EventSource`**. So a visitor waiting in line produces one trace at join and nothing thereafter. The queue's behaviour during that wait is observable through the Gate's own metrics (`gate_queue_depth`, `gate_admitted_total`) instead. Tracing it would mean hand-rolling a span around the `EventSource` lifecycle — deliberately skipped: the metrics answer the operational question, and the trace would be a single long-lived span with no children.
 
 ## If the RED row is empty
 

@@ -26,6 +26,12 @@ Instrument with **OpenTelemetry SDKs** and export **OTLP (http/protobuf) directl
 - Free-tier sleep leaves gaps in the graphs. Documented in the runbook as an artifact of the hosting tier rather than an outage; the keep-alive cron keeps the API's gaps rare.
 - Sampling starts at always-on because demo traffic sits far below free-tier limits; `OTEL_TRACES_SAMPLER`/`_ARG` is the documented knob if that changes.
 
+## Verified in production
+
+A browser-rooted trace spans two languages: the web app's `fetch` span (`openseat-web`, via Faro) is the parent of `POST /gate/{eventId}/join` (`openseat-gate`, Go), captured in `docs/observability/trace-web-to-gate.png`. That is the payoff of instrumenting every tier with OpenTelemetry rather than a vendor SDK per runtime — W3C `traceparent` crosses the CORS boundary and Tempo stitches the two services into one waterfall.
+
+Known limitation: the waiting room's live position stream uses `EventSource`, which OpenTelemetry's browser instrumentation does not patch, so a visitor produces one trace at join and none while waiting. The Gate's own metrics cover that window instead.
+
 ## When this would change
 
 Moving to AWS introduces the collector tier and tail sampling. Real payment providers would justify instrumenting the payments adapter boundary with provider-latency metrics. And if the Gate ever grows real operational surface (multiple instances, autoscaling), its logs earn shipping the same way the API's did.
