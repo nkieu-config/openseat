@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { TelemetryInit } from "@/components/telemetry-init";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { LocaleProvider } from "@/i18n/provider";
@@ -58,6 +59,7 @@ export default async function RootLayout({
               <div className="flex flex-1 flex-col">{children}</div>
               <SiteFooter />
               <Toaster />
+              <TelemetryInit />
             </AuthProvider>
           </ThemeProvider>
         </LocaleProvider>
