@@ -41,6 +41,7 @@ func (q *Queue) Join(ctx context.Context, eventID, visitorID string) (int64, int
 	if _, err := pipe.Exec(ctx); err != nil {
 		return 0, 0, err
 	}
+	joinsTotal.Add(ctx, 1)
 	return q.Position(ctx, eventID, visitorID)
 }
 
@@ -102,6 +103,9 @@ func (q *Queue) Admit(ctx context.Context, eventID string, batch int) (int, erro
 			return admitted, err
 		}
 		admitted++
+	}
+	if admitted > 0 {
+		admittedTotal.Add(ctx, int64(admitted))
 	}
 	return admitted, nil
 }

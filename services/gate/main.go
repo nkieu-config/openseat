@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type config struct {
@@ -66,9 +67,10 @@ func mustJSON(value any) string {
 }
 
 type server struct {
-	cfg   config
-	queue *Queue
-	mux   *http.ServeMux
+	cfg     config
+	queue   *Queue
+	mux     *http.ServeMux
+	handler http.Handler
 }
 
 func newServer(cfg config, queue *Queue) *server {
@@ -77,18 +79,19 @@ func newServer(cfg config, queue *Queue) *server {
 	s.mux.HandleFunc("POST /gate/{eventId}/join", s.handleJoin)
 	s.mux.HandleFunc("GET /gate/{eventId}/queue", s.handleStream)
 	s.mux.HandleFunc("POST /gate/{eventId}/simulate", s.handleSimulate)
+	s.handler = otelhttp.NewHandler(s.mux, "gate")
 	return s
 }
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", s.cfg.webOrigin)
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, traceparent")
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	s.mux.ServeHTTP(w, r)
+	s.handler.ServeHTTP(w, r)
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
@@ -176,6 +179,9 @@ func (s *server) handleStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
+	sseConnections.Add(r.Context(), 1)
+	defer sseConnections.Add(context.Background(), -1)
+
 	ctx := r.Context()
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -230,7 +236,10 @@ func main() {
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
 		log.Fatalf("redis unreachable: %v", err)
 	}
+	shutdownTelemetry := setupTelemetry(context.Background())
+	defer func() { _ = shutdownTelemetry(context.Background()) }()
 	queue := newQueue(rdb, cfg.admissionTTL)
+	registerQueueDepthGauge(queue)
 	if cfg.admitEnabled {
 		go newAdmitter(queue, cfg.admitBatch, cfg.admitInterval, log.Default()).Run(context.Background())
 	}
