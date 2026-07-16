@@ -55,7 +55,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(http_server_duration_milliseconds_count{http_status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_duration_milliseconds_count[5m])), 0.001)"
+          "expr": "(sum(rate(http_server_duration_milliseconds_count{http_status_code=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count[5m])), 0.001)"
         }
       ],
       "fieldConfig": {
@@ -113,7 +113,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (result) (increase(holds_acquired_total[$__range]))",
+          "expr": "sum by (result) (holds_acquired_total)",
           "legendFormat": "{{result}}",
           "instant": true
         }
@@ -128,11 +128,11 @@
     {
       "id": 12,
       "type": "stat",
-      "title": "Orders paid (range)",
+      "title": "Orders paid",
       "gridPos": { "x": 8, "y": 10, "w": 4, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "${prometheus}" },
       "targets": [
-        { "refId": "A", "expr": "sum(increase(orders_paid_total[$__range]))" }
+        { "refId": "A", "expr": "sum(orders_paid_total) or vector(0)" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -153,13 +153,13 @@
     {
       "id": 13,
       "type": "stat",
-      "title": "Checked in (range)",
+      "title": "Checked in",
       "gridPos": { "x": 12, "y": 10, "w": 4, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "${prometheus}" },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(tickets_checked_in_total{result=\"admitted\"}[$__range]))"
+          "expr": "sum(tickets_checked_in_total{result=\"admitted\"}) or vector(0)"
         }
       ],
       "fieldConfig": {
@@ -187,7 +187,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (outcome) (increase(webhook_events_total[$__range]))",
+          "expr": "sum by (outcome) (webhook_events_total)",
           "legendFormat": "{{outcome}}",
           "instant": true
         }
@@ -250,7 +250,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (result) (increase(admissions_verified_total[$__range]))",
+          "expr": "sum by (result) (admissions_verified_total)",
           "legendFormat": "{{result}}",
           "instant": true
         }
