@@ -298,11 +298,41 @@ describe('Refunds (e2e)', () => {
     });
     expect(voided.status).toBe('void');
 
+    const resaleKey = `resale-${Math.random().toString(36).slice(2)}`;
     await request(app.getHttpServer())
       .post(`/api/events/${eventId}/holds`)
-      .set('x-hold-key', `rehold-${Math.random().toString(36).slice(2)}`)
+      .set('x-hold-key', resaleKey)
       .send({ seatId })
       .expect(201);
+
+    const resaleOrderRes = await request(app.getHttpServer())
+      .post(`/api/events/${eventId}/orders`)
+      .set('x-hold-key', resaleKey)
+      .send({
+        seatIds: [seatId],
+        buyerEmail: 'resale@example.com',
+        buyerName: 'R',
+      })
+      .expect(201);
+    const resaleOrder = resaleOrderRes.body as OrderResponse;
+    const resalePayment = await prisma.payment.findUniqueOrThrow({
+      where: { orderId: resaleOrder.id },
+    });
+    await sendWebhook({
+      id: `evt_resale_${resaleOrder.id}`,
+      type: 'payment.succeeded',
+      intentId: resalePayment.providerIntentId,
+      orderId: resaleOrder.id,
+      amountSatang: 90_000,
+      createdAt: new Date().toISOString(),
+    });
+    const resold = await prisma.order.findUniqueOrThrow({
+      where: { id: resaleOrder.id },
+      include: { tickets: true },
+    });
+    expect(resold.status).toBe('paid');
+    expect(resold.tickets).toHaveLength(1);
+    expect(resold.tickets[0].seatId).toBe(seatId);
 
     expect(lastRefundBody).not.toBeNull();
     expect(lastRefundBody!.amountSatang).toBe(90_000);
