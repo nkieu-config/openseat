@@ -71,6 +71,32 @@ export type Attendee = {
   checkedInAt: string | null;
 };
 
+export type OrderTicketRow = {
+  id: string;
+  ticketType: string;
+  seat: string | null;
+  status: string;
+  priceSatang: number;
+};
+
+export type RefundRow = {
+  id: string;
+  status: string;
+  amountSatang: number;
+};
+
+export type EventOrder = {
+  id: string;
+  buyerName: string;
+  buyerEmail: string;
+  status: string;
+  totalSatang: number;
+  refundedSatang: number;
+  createdAt: string;
+  tickets: OrderTicketRow[];
+  refunds: RefundRow[];
+};
+
 const EVENT_CARD_FIELDS = `
   id slug title status venueName startsAt isDemo seated
   capacity ticketsSold ticketsCheckedIn grossSatang
@@ -123,6 +149,25 @@ export async function fetchAttendees(
     { eventId, limit },
   );
   return data.eventAttendees;
+}
+
+const EVENT_ORDERS_QUERY = `query ($eventId: ID!, $limit: Int) {
+  eventOrders(eventId: $eventId, limit: $limit) {
+    id buyerName buyerEmail status totalSatang refundedSatang createdAt
+    tickets { id ticketType seat status priceSatang }
+    refunds { id status amountSatang }
+  }
+}`;
+
+export async function fetchEventOrders(
+  eventId: string,
+  limit = 200,
+): Promise<EventOrder[]> {
+  const data = await gqlRequest<{ eventOrders: EventOrder[] }>(
+    EVENT_ORDERS_QUERY,
+    { eventId, limit },
+  );
+  return data.eventOrders;
 }
 
 export async function downloadAttendeesCsv(

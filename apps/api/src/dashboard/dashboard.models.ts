@@ -95,6 +95,13 @@ export class OrderTicketRow {
 }
 
 @ObjectType()
+export class RefundRow {
+  @Field(() => ID) id!: string;
+  @Field() status!: string;
+  @Field(() => Float) amountSatang!: number;
+}
+
+@ObjectType()
 export class OrderRow {
   @Field(() => ID) id!: string;
   @Field() buyerName!: string;
@@ -104,4 +111,5 @@ export class OrderRow {
   @Field(() => Float) refundedSatang!: number;
   @Field(() => GraphQLISODateTime) createdAt!: Date;
   @Field(() => [OrderTicketRow]) tickets!: OrderTicketRow[];
+  @Field(() => [RefundRow]) refunds!: RefundRow[];
 }

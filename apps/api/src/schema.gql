@@ -57,6 +57,7 @@ type OrderRow {
   createdAt: DateTime!
   id: ID!
   refundedSatang: Float!
+  refunds: [RefundRow!]!
   status: String!
   tickets: [OrderTicketRow!]!
   totalSatang: Float!
@@ -75,6 +76,12 @@ type Query {
   eventDashboard(eventId: ID!): EventDashboard!
   eventOrders(eventId: ID!, limit: Int = 200): [OrderRow!]!
   organizerEvents: [EventCard!]!
+}
+
+type RefundRow {
+  amountSatang: Float!
+  id: ID!
+  status: String!
 }
 
 type SectionOccupancy {

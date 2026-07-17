@@ -1,7 +1,7 @@
 "use client";
 
 import type { SeatMapData } from "@openseat/contracts";
-import { Download, LayoutGrid, ScanLine } from "lucide-react";
+import { Download, LayoutGrid, Receipt, ScanLine } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -195,6 +195,14 @@ export default function EventConsolePage() {
             >
               <Download className="size-4" />
               {exporting ? "Exporting…" : "CSV"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              render={<Link href={`/organizer/events/${eventId}/orders`} />}
+            >
+              <Receipt className="size-4" />
+              Orders
             </Button>
             <Button
               size="sm"

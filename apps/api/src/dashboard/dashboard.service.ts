@@ -347,6 +347,10 @@ export class DashboardService {
             seat: { select: { section: true, rowLabel: true, number: true } },
           },
         },
+        refunds: {
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, status: true, amountSatang: true },
+        },
       },
     });
     return orders.map((order): OrderRow => {
@@ -369,6 +373,11 @@ export class DashboardService {
             : null,
           status: ticket.status,
           priceSatang: priceByType.get(ticket.ticketTypeId) ?? 0,
+        })),
+        refunds: order.refunds.map((refund) => ({
+          id: refund.id,
+          status: refund.status,
+          amountSatang: refund.amountSatang,
         })),
       };
     });
