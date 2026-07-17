@@ -1,6 +1,6 @@
 # M9 — Refunds ("Give the money back")
 
-Status: Proposed (2026-07-17)
+Status: Approved (2026-07-17)
 
 ## Goal
 
