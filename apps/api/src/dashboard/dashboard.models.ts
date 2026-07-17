@@ -84,3 +84,24 @@ export class Attendee {
   @Field(() => GraphQLISODateTime, { nullable: true })
   checkedInAt!: Date | null;
 }
+
+@ObjectType()
+export class OrderTicketRow {
+  @Field(() => ID) id!: string;
+  @Field() ticketType!: string;
+  @Field(() => String, { nullable: true }) seat!: string | null;
+  @Field() status!: string;
+  @Field(() => Float) priceSatang!: number;
+}
+
+@ObjectType()
+export class OrderRow {
+  @Field(() => ID) id!: string;
+  @Field() buyerName!: string;
+  @Field() buyerEmail!: string;
+  @Field() status!: string;
+  @Field(() => Float) totalSatang!: number;
+  @Field(() => Float) refundedSatang!: number;
+  @Field(() => GraphQLISODateTime) createdAt!: Date;
+  @Field(() => [OrderTicketRow]) tickets!: OrderTicketRow[];
+}

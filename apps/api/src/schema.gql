@@ -51,9 +51,29 @@ type EventDashboard {
   totals: DashboardTotals!
 }
 
+type OrderRow {
+  buyerEmail: String!
+  buyerName: String!
+  createdAt: DateTime!
+  id: ID!
+  refundedSatang: Float!
+  status: String!
+  tickets: [OrderTicketRow!]!
+  totalSatang: Float!
+}
+
+type OrderTicketRow {
+  id: ID!
+  priceSatang: Float!
+  seat: String
+  status: String!
+  ticketType: String!
+}
+
 type Query {
   eventAttendees(eventId: ID!, limit: Int = 500): [Attendee!]!
   eventDashboard(eventId: ID!): EventDashboard!
+  eventOrders(eventId: ID!, limit: Int = 200): [OrderRow!]!
   organizerEvents: [EventCard!]!
 }
 

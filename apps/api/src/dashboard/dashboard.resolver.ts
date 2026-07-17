@@ -3,7 +3,12 @@ import { Args, ID, Int, Query, Resolver } from '@nestjs/graphql';
 import { GqlAuthGuard, GqlCurrentUser } from '../auth/gql-auth';
 import type { RequestUser } from '../auth/current-user.decorator';
 import { DashboardService } from './dashboard.service';
-import { Attendee, EventCard, EventDashboard } from './dashboard.models';
+import {
+  Attendee,
+  EventCard,
+  EventDashboard,
+  OrderRow,
+} from './dashboard.models';
 
 @Resolver()
 @UseGuards(GqlAuthGuard)
@@ -31,5 +36,15 @@ export class DashboardResolver {
     limit: number,
   ): Promise<Attendee[]> {
     return this.dashboard.eventAttendees(eventId, user.id, limit);
+  }
+
+  @Query(() => [OrderRow])
+  eventOrders(
+    @GqlCurrentUser() user: RequestUser,
+    @Args('eventId', { type: () => ID }) eventId: string,
+    @Args('limit', { type: () => Int, nullable: true, defaultValue: 200 })
+    limit: number,
+  ): Promise<OrderRow[]> {
+    return this.dashboard.eventOrders(eventId, user.id, limit);
   }
 }

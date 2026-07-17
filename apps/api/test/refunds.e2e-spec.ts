@@ -533,6 +533,94 @@ describe('Refunds (e2e)', () => {
     expect(after.status).toBe(before.status);
   });
 
+  it('shows the refunded order on the roster and drops event revenue by the refund', async () => {
+    const order = await buyPaidSeatWithTwo();
+    const [first] = order.tickets;
+
+    const grossBefore = await eventGrossSatang();
+
+    const res = await refund(order.id, [first.id]).expect(201);
+    const refundId = (res.body as RefundResponse).id;
+    await sendWebhook({
+      id: `evt_refund_${refundId}`,
+      type: 'payment.refunded',
+      intentId: 'pi_ignored',
+      orderId: order.id,
+      amountSatang: 90_000,
+      refundId: 're_provider_roster',
+      reference: refundId,
+      createdAt: new Date().toISOString(),
+    });
+
+    const grossAfter = await eventGrossSatang();
+    expect(grossAfter).toBe(grossBefore - 90_000);
+
+    const rosterRes = await gql(
+      `query ($id: ID!) {
+        eventOrders(eventId: $id) {
+          id status totalSatang refundedSatang
+          tickets { id status priceSatang }
+        }
+      }`,
+      { id: eventId },
+      accessToken,
+    );
+    const orders = (
+      rosterRes.body as {
+        data: {
+          eventOrders: {
+            id: string;
+            status: string;
+            refundedSatang: number;
+            tickets: { id: string; status: string }[];
+          }[];
+        };
+      }
+    ).data.eventOrders;
+    const row = orders.find((o) => o.id === order.id)!;
+    expect(row.status).toBe('partially_refunded');
+    expect(row.refundedSatang).toBe(90_000);
+    expect(row.tickets.filter((t) => t.status === 'void')).toHaveLength(1);
+    expect(row.tickets.filter((t) => t.status === 'issued')).toHaveLength(1);
+  });
+
+  it('hides the roster from a non-owner', async () => {
+    const res = await gql(
+      `query ($id: ID!) { eventOrders(eventId: $id) { id } }`,
+      { id: eventId },
+      otherToken,
+    );
+    const body = res.body as {
+      data?: { eventOrders?: unknown } | null;
+      errors?: unknown[];
+    };
+    expect(body.data?.eventOrders ?? null).toBeNull();
+  });
+
+  function gql(
+    query: string,
+    variables: Record<string, unknown>,
+    token: string,
+  ) {
+    return request(app.getHttpServer())
+      .post('/api/graphql')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ query, variables });
+  }
+
+  async function eventGrossSatang(): Promise<number> {
+    const res = await gql(
+      `query ($id: ID!) { eventDashboard(eventId: $id) { totals { grossSatang } } }`,
+      { id: eventId },
+      accessToken,
+    );
+    return (
+      res.body as {
+        data: { eventDashboard: { totals: { grossSatang: number } } };
+      }
+    ).data.eventDashboard.totals.grossSatang;
+  }
+
   async function ticketQr(ticketId: string): Promise<string> {
     const ticket = await prisma.ticket.findUniqueOrThrow({
       where: { id: ticketId },

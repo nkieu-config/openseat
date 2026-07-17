@@ -5,13 +5,21 @@ import {
   DashboardTotals,
   EventCard,
   EventDashboard,
+  OrderRow,
   SectionOccupancy,
   TierStat,
   TimelineBucket,
 } from './dashboard.models';
+import { OrderStatus } from '../generated/prisma/client';
 
 const DAY_MS = 86_400_000;
 const MAX_TIMELINE_DAYS = 45;
+
+const PAID_ORDER_STATUSES: OrderStatus[] = [
+  'paid',
+  'partially_refunded',
+  'refunded',
+];
 
 function startOfDayUtc(date: Date): Date {
   return new Date(
@@ -64,8 +72,8 @@ export class DashboardService {
             where: { eventId: event.id, status: 'checked_in' },
           }),
           this.prisma.order.aggregate({
-            where: { eventId: event.id, status: 'paid' },
-            _sum: { totalSatang: true },
+            where: { eventId: event.id, status: { in: PAID_ORDER_STATUSES } },
+            _sum: { totalSatang: true, refundedSatang: true },
           }),
         ]);
         return {
@@ -83,7 +91,9 @@ export class DashboardService {
           ),
           ticketsSold,
           ticketsCheckedIn,
-          grossSatang: grossAgg._sum.totalSatang ?? 0,
+          grossSatang:
+            (grossAgg._sum.totalSatang ?? 0) -
+            (grossAgg._sum.refundedSatang ?? 0),
         };
       }),
     );
@@ -118,7 +128,9 @@ export class DashboardService {
         where: { eventId },
         select: { id: true, section: true },
       }),
-      this.prisma.order.count({ where: { eventId, status: 'paid' } }),
+      this.prisma.order.count({
+        where: { eventId, status: { in: PAID_ORDER_STATUSES } },
+      }),
       this.prisma.order.count({
         where: { eventId, status: 'awaiting_payment' },
       }),
@@ -126,11 +138,11 @@ export class DashboardService {
       this.prisma.ticket.count({ where: { eventId, status: 'checked_in' } }),
       this.prisma.hold.count({ where: { eventId, expiresAt: { gt: now } } }),
       this.prisma.order.aggregate({
-        where: { eventId, status: 'paid' },
-        _sum: { totalSatang: true },
+        where: { eventId, status: { in: PAID_ORDER_STATUSES } },
+        _sum: { totalSatang: true, refundedSatang: true },
       }),
       this.prisma.order.findMany({
-        where: { eventId, status: 'paid' },
+        where: { eventId, status: { in: PAID_ORDER_STATUSES } },
         select: { createdAt: true, totalSatang: true },
       }),
       this.prisma.ticket.findMany({
@@ -150,7 +162,8 @@ export class DashboardService {
     const capacity = ticketTypes.reduce((sum, tier) => sum + tier.quantity, 0);
 
     const totals: DashboardTotals = {
-      grossSatang: grossAgg._sum.totalSatang ?? 0,
+      grossSatang:
+        (grossAgg._sum.totalSatang ?? 0) - (grossAgg._sum.refundedSatang ?? 0),
       paidOrders,
       pendingOrders,
       ticketsSold,
@@ -313,5 +326,51 @@ export class DashboardService {
       status: ticket.status,
       checkedInAt: ticket.checkedInAt,
     }));
+  }
+
+  async eventOrders(
+    eventId: string,
+    organizerId: string,
+    limit: number,
+  ): Promise<OrderRow[]> {
+    await this.ownedEvent(eventId, organizerId);
+    const orders = await this.prisma.order.findMany({
+      where: { eventId, status: { in: PAID_ORDER_STATUSES } },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(Math.max(limit, 1), 500),
+      include: {
+        items: true,
+        tickets: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            ticketType: { select: { name: true } },
+            seat: { select: { section: true, rowLabel: true, number: true } },
+          },
+        },
+      },
+    });
+    return orders.map((order): OrderRow => {
+      const priceByType = new Map(
+        order.items.map((item) => [item.ticketTypeId, item.unitPriceSatang]),
+      );
+      return {
+        id: order.id,
+        buyerName: order.buyerName,
+        buyerEmail: order.buyerEmail,
+        status: order.status,
+        totalSatang: order.totalSatang,
+        refundedSatang: order.refundedSatang,
+        createdAt: order.createdAt,
+        tickets: order.tickets.map((ticket) => ({
+          id: ticket.id,
+          ticketType: ticket.ticketType.name,
+          seat: ticket.seat
+            ? `${ticket.seat.section} ${ticket.seat.rowLabel}${ticket.seat.number}`
+            : null,
+          status: ticket.status,
+          priceSatang: priceByType.get(ticket.ticketTypeId) ?? 0,
+        })),
+      };
+    });
   }
 }
