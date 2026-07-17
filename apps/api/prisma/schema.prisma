@@ -18,9 +18,10 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  events        Event[]
-  orders        Order[]
-  refreshTokens RefreshToken[]
+  events           Event[]
+  orders           Order[]
+  refreshTokens    RefreshToken[]
+  refundsRequested Refund[]
 
   @@map("users")
 }
@@ -162,6 +163,14 @@ enum OrderStatus {
   paid
   expired
   canceled
+  partially_refunded
+  refunded
+}
+
+enum RefundStatus {
+  pending
+  succeeded
+  failed
 }
 
 model Order {
@@ -172,6 +181,7 @@ model Order {
   buyerName      String      @map("buyer_name")
   status         OrderStatus @default(pending)
   totalSatang    Int         @default(0) @map("total_satang")
+  refundedSatang Int         @default(0) @map("refunded_satang")
   idempotencyKey String?     @map("idempotency_key")
   guestToken     String      @unique @map("guest_token")
   expiresAt      DateTime?   @map("expires_at")
@@ -183,6 +193,7 @@ model Order {
   items   OrderItem[]
   tickets Ticket[]
   payment Payment?
+  refunds Refund[]
 
   @@unique([eventId, idempotencyKey])
   @@index([buyerUserId])
@@ -263,6 +274,7 @@ model Ticket {
   attendeeName  String       @map("attendee_name")
   qrToken       String       @unique @map("qr_token")
   status        TicketStatus @default(issued)
+  refundId      String?      @map("refund_id")
   checkedInAt   DateTime?    @map("checked_in_at")
   createdAt     DateTime     @default(now()) @map("created_at")
 
@@ -270,8 +282,30 @@ model Ticket {
   event      Event      @relation(fields: [eventId], references: [id])
   ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
   seat       Seat?      @relation(fields: [seatId], references: [id])
+  refund     Refund?    @relation(fields: [refundId], references: [id])
 
   @@index([eventId])
   @@index([orderId])
+  @@index([refundId])
   @@map("tickets")
+}
+
+model Refund {
+  id               String       @id @default(uuid())
+  orderId          String       @map("order_id")
+  providerRefundId String?      @map("provider_refund_id")
+  amountSatang     Int          @map("amount_satang")
+  status           RefundStatus @default(pending)
+  idempotencyKey   String?      @map("idempotency_key")
+  requestedById    String       @map("requested_by_id")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  settledAt        DateTime?    @map("settled_at")
+
+  order       Order    @relation(fields: [orderId], references: [id])
+  requestedBy User     @relation(fields: [requestedById], references: [id])
+  tickets     Ticket[]
+
+  @@unique([orderId, idempotencyKey])
+  @@index([orderId])
+  @@map("refunds")
 }
