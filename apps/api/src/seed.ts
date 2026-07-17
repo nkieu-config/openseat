@@ -213,6 +213,9 @@ async function seedDropEvent(organizerId: string): Promise<number> {
     await prisma.payment.deleteMany({
       where: { order: { eventId: existing.id } },
     });
+    await prisma.refund.deleteMany({
+      where: { order: { eventId: existing.id } },
+    });
     await prisma.order.deleteMany({ where: { eventId: existing.id } });
     await prisma.event.delete({ where: { id: existing.id } });
   }
@@ -282,6 +285,9 @@ async function main() {
   if (existing) {
     await prisma.ticket.deleteMany({ where: { eventId: existing.id } });
     await prisma.payment.deleteMany({
+      where: { order: { eventId: existing.id } },
+    });
+    await prisma.refund.deleteMany({
       where: { order: { eventId: existing.id } },
     });
     await prisma.order.deleteMany({ where: { eventId: existing.id } });
