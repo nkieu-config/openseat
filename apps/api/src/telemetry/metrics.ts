@@ -9,3 +9,4 @@ export const admissionsVerified = meter.createCounter(
   'admissions_verified_total',
 );
 export const webhookEvents = meter.createCounter('webhook_events_total');
+export const refundsTotal = meter.createCounter('refunds_total');

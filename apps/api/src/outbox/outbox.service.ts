@@ -5,7 +5,11 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { Prisma } from '../generated/prisma/client';
 
 export type OutboxEventType =
-  'ticket.issued' | 'seats.sold' | 'seats.released' | 'order.updated';
+  | 'ticket.issued'
+  | 'seats.sold'
+  | 'seats.released'
+  | 'order.updated'
+  | 'order.refunded';
 
 type OutboxWriter = Pick<Prisma.TransactionClient, 'outboxEvent'>;
 

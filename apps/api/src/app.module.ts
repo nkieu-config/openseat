@@ -19,6 +19,7 @@ import { OrdersModule } from './orders/orders.module';
 import { OutboxModule } from './outbox/outbox.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PaymockClientModule } from './paymock-client/paymock-client.module';
+import { RefundsModule } from './refunds/refunds.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { QueuesModule } from './queues/queues.module';
 import { RealtimeModule } from './realtime/realtime.module';
@@ -73,6 +74,7 @@ import { TelemetryExceptionFilter } from './telemetry/telemetry-exception.filter
     OutboxModule,
     PaymockClientModule,
     PaymentsModule,
+    RefundsModule,
     QueuesModule,
     NotificationsModule,
     HealthModule,

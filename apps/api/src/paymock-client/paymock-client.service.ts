@@ -7,7 +7,13 @@ export type PaymockIntent = {
   status: string;
 };
 
+export type PaymockRefund = {
+  refundId: string;
+  status: string;
+};
+
 const INTENT_TIMEOUT_MS = 90_000;
+const REFUND_TIMEOUT_MS = 90_000;
 
 @Injectable()
 export class PaymockClientService {
@@ -56,6 +62,46 @@ export class PaymockClientService {
     } catch (error) {
       this.logger.error(
         `Payment intent creation failed for order ${input.orderId}: ${String(error)}`,
+      );
+      throw new BadGatewayException(
+        'The payment provider is unavailable — try again shortly',
+      );
+    }
+  }
+
+  async createRefund(input: {
+    intentId: string;
+    amountSatang: number;
+    reference: string;
+  }): Promise<PaymockRefund> {
+    const paymockUrl =
+      this.config.get<string>('PAYMOCK_URL') ?? 'http://localhost:4100';
+    const apiKey =
+      this.config.get<string>('PAYMOCK_API_KEY') ?? 'paymock-dev-key';
+
+    try {
+      const response = await fetch(
+        `${paymockUrl}/intents/${input.intentId}/refunds`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            amountSatang: input.amountSatang,
+            reference: input.reference,
+          }),
+          signal: AbortSignal.timeout(REFUND_TIMEOUT_MS),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(`paymock responded ${response.status}`);
+      }
+      return (await response.json()) as PaymockRefund;
+    } catch (error) {
+      this.logger.error(
+        `Refund creation failed for intent ${input.intentId}: ${String(error)}`,
       );
       throw new BadGatewayException(
         'The payment provider is unavailable — try again shortly',
