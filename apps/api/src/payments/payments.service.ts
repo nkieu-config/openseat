@@ -4,8 +4,9 @@ import { OrdersService } from '../orders/orders.service';
 import { OutboxService } from '../outbox/outbox.service';
 import { PaymockClientService } from '../paymock-client/paymock-client.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { RefundsService } from '../refunds/refunds.service';
 import { Prisma } from '../generated/prisma/client';
-import { ordersPaid, webhookEvents } from '../telemetry/metrics';
+import { ordersPaid, refundsTotal, webhookEvents } from '../telemetry/metrics';
 
 export type PaymockWebhookEvent = {
   id: string;
@@ -29,6 +30,7 @@ export class PaymentsService {
     private readonly paymock: PaymockClientService,
     private readonly orders: OrdersService,
     private readonly outbox: OutboxService,
+    private readonly refunds: RefundsService,
   ) {}
 
   private rejectWebhook(message: string): never {
@@ -92,7 +94,7 @@ export class PaymentsService {
         await this.handleFailed(event);
         break;
       case 'payment.refunded':
-        this.handleRefunded(event);
+        await this.handleRefunded(event);
         break;
       default:
         this.logger.warn(`ignoring unknown webhook type: ${event.type}`);
@@ -106,10 +108,30 @@ export class PaymentsService {
     webhookEvents.add(1, { outcome: 'processed' });
   }
 
-  private handleRefunded(event: PaymockWebhookEvent): void {
-    this.logger.warn(
-      `received payment.refunded for order ${event.orderId} before the refund settlement path exists`,
-    );
+  private async handleRefunded(event: PaymockWebhookEvent): Promise<void> {
+    if (!event.reference) {
+      this.logger.warn('payment.refunded arrived without a reference');
+      return;
+    }
+    let settled = false;
+    await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.refund.updateMany({
+        where: { id: event.reference, status: 'pending' },
+        data: {
+          status: 'succeeded',
+          settledAt: new Date(),
+          providerRefundId: event.refundId,
+        },
+      });
+      if (updated.count === 0) {
+        return;
+      }
+      settled = true;
+      await this.refunds.settleInTx(tx, event.orderId, event.amountSatang);
+    });
+    if (settled) {
+      refundsTotal.add(1, { result: 'succeeded' });
+    }
   }
 
   private async handleSucceeded(event: PaymockWebhookEvent) {

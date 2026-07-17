@@ -91,6 +91,12 @@ export class OutboxService {
       case 'ticket.issued':
         await this.sendTicketEmail(payload.orderId as string);
         return;
+      case 'order.refunded':
+        await this.sendRefundNotice(
+          payload.orderId as string,
+          payload.amountSatang as number,
+        );
+        return;
       default:
         this.logger.warn(
           `Unknown outbox event type ${type}; marking as processed`,
@@ -127,6 +133,24 @@ export class OutboxService {
           ? `${ticket.ticketType.name} — ${ticket.seat.section} ${ticket.seat.rowLabel}${ticket.seat.number}`
           : ticket.ticketType.name,
       ),
+    });
+  }
+
+  private async sendRefundNotice(orderId: string, amountSatang: number) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { event: { select: { title: true } } },
+    });
+    if (!order) {
+      return;
+    }
+    await this.mail.sendRefundNotice({
+      to: order.buyerEmail,
+      buyerName: order.buyerName,
+      eventTitle: order.event.title,
+      amountSatang,
+      orderId: order.id,
+      guestToken: order.guestToken,
     });
   }
 }

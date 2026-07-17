@@ -142,8 +142,8 @@ describe('Refunds (e2e)', () => {
         sections: [
           {
             name: 'Gold',
-            rows: 2,
-            cols: 5,
+            rows: 3,
+            cols: 6,
             tierName: 'Gold',
             priceSatang: 90_000,
           },
@@ -209,6 +209,39 @@ describe('Refunds (e2e)', () => {
       intentId: payment.providerIntentId,
       orderId: order.id,
       amountSatang: 90_000,
+      createdAt: new Date().toISOString(),
+    });
+    const refetch = await request(app.getHttpServer())
+      .get(`/api/orders/${order.id}?token=${order.guestToken}`)
+      .expect(200);
+    return refetch.body as OrderResponse;
+  }
+
+  async function buyPaidSeatWithTwo(): Promise<OrderResponse> {
+    const key = `hold-${Math.random().toString(36).slice(2)}`;
+    const twoSeats = [seatIds.shift()!, seatIds.shift()!];
+    for (const seatId of twoSeats) {
+      await request(app.getHttpServer())
+        .post(`/api/events/${eventId}/holds`)
+        .set('x-hold-key', key)
+        .send({ seatId })
+        .expect(201);
+    }
+    const orderRes = await request(app.getHttpServer())
+      .post(`/api/events/${eventId}/orders`)
+      .set('x-hold-key', key)
+      .send({ seatIds: twoSeats, buyerEmail: 'b@example.com', buyerName: 'B' })
+      .expect(201);
+    const order = orderRes.body as OrderResponse;
+    const payment = await prisma.payment.findUniqueOrThrow({
+      where: { orderId: order.id },
+    });
+    await sendWebhook({
+      id: `evt_paid_${order.id}`,
+      type: 'payment.succeeded',
+      intentId: payment.providerIntentId,
+      orderId: order.id,
+      amountSatang: 180_000,
       createdAt: new Date().toISOString(),
     });
     const refetch = await request(app.getHttpServer())
@@ -413,6 +446,91 @@ describe('Refunds (e2e)', () => {
     });
     expect(retried.status).toBe('pending');
     expect(retried.providerRefundId).not.toBeNull();
+  });
+
+  it('settles a refund on the provider webhook, moving the order to partially_refunded, once', async () => {
+    const order = await buyPaidSeatWithTwo();
+    const [first] = order.tickets;
+
+    const res = await refund(order.id, [first.id]).expect(201);
+    const refundId = (res.body as RefundResponse).id;
+
+    const eventBody = {
+      id: `evt_refund_${refundId}`,
+      type: 'payment.refunded',
+      intentId: 'pi_ignored',
+      orderId: order.id,
+      amountSatang: 90_000,
+      refundId: 're_provider_1',
+      reference: refundId,
+      createdAt: new Date().toISOString(),
+    };
+    await sendWebhook(eventBody);
+
+    const settled = await prisma.order.findUniqueOrThrow({
+      where: { id: order.id },
+    });
+    expect(settled.status).toBe('partially_refunded');
+    expect(settled.refundedSatang).toBe(90_000);
+    const settledRefund = await prisma.refund.findUniqueOrThrow({
+      where: { id: refundId },
+    });
+    expect(settledRefund.status).toBe('succeeded');
+    expect(settledRefund.providerRefundId).toBe('re_provider_1');
+
+    const duplicate = await sendWebhook(eventBody);
+    expect((duplicate.body as { duplicate?: boolean }).duplicate).toBe(true);
+    const afterDuplicate = await prisma.order.findUniqueOrThrow({
+      where: { id: order.id },
+    });
+    expect(afterDuplicate.refundedSatang).toBe(90_000);
+  });
+
+  it('reaches refunded once every ticket is refunded and settled', async () => {
+    const order = await buyPaidSeatWithTwo();
+
+    for (const ticket of order.tickets) {
+      const res = await refund(order.id, [ticket.id]).expect(201);
+      const refundId = (res.body as RefundResponse).id;
+      await sendWebhook({
+        id: `evt_refund_${refundId}`,
+        type: 'payment.refunded',
+        intentId: 'pi_ignored',
+        orderId: order.id,
+        amountSatang: 90_000,
+        refundId: `re_provider_${refundId}`,
+        reference: refundId,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    const settled = await prisma.order.findUniqueOrThrow({
+      where: { id: order.id },
+    });
+    expect(settled.status).toBe('refunded');
+    expect(settled.refundedSatang).toBe(180_000);
+  });
+
+  it('ignores a refunded webhook whose reference is unknown', async () => {
+    const order = await buyPaidSeat();
+    const before = await prisma.order.findUniqueOrThrow({
+      where: { id: order.id },
+    });
+    await sendWebhook({
+      id: `evt_refund_orphan_${order.id}`,
+      type: 'payment.refunded',
+      intentId: 'pi_ignored',
+      orderId: order.id,
+      amountSatang: 90_000,
+      refundId: 're_provider_orphan',
+      reference: 'not-a-real-refund-id',
+      createdAt: new Date().toISOString(),
+    });
+    const after = await prisma.order.findUniqueOrThrow({
+      where: { id: order.id },
+    });
+    expect(after.refundedSatang).toBe(before.refundedSatang);
+    expect(after.status).toBe(before.status);
   });
 
   async function ticketQr(ticketId: string): Promise<string> {
