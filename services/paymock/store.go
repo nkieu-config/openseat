@@ -14,14 +14,15 @@ const (
 )
 
 type Intent struct {
-	ID           string
-	OrderID      string
-	AmountSatang int64
-	Currency     string
-	CallbackURL  string
-	ReturnURL    string
-	Status       string
-	CreatedAt    time.Time
+	ID             string
+	OrderID        string
+	AmountSatang   int64
+	Currency       string
+	CallbackURL    string
+	ReturnURL      string
+	Status         string
+	RefundedSatang int64
+	CreatedAt      time.Time
 }
 
 type store struct {
@@ -74,4 +75,24 @@ func (s *store) Resolve(id, status string) (*Intent, bool) {
 	}
 	intent.Status = status
 	return intent, true
+}
+
+func (s *store) Refund(id string, amountSatang int64) (*Intent, string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	intent, ok := s.intents[id]
+	if !ok {
+		return nil, "not_found"
+	}
+	if amountSatang <= 0 {
+		return intent, "invalid_amount"
+	}
+	if intent.Status != statusSucceeded {
+		return intent, "not_succeeded"
+	}
+	if intent.RefundedSatang+amountSatang > intent.AmountSatang {
+		return intent, "over_refund"
+	}
+	intent.RefundedSatang += amountSatang
+	return intent, ""
 }

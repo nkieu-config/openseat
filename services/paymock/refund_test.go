@@ -1,0 +1,142 @@
+package main
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestStoreRefundTransitions(t *testing.T) {
+	cases := []struct {
+		name      string
+		status    string
+		paid      int64
+		already   int64
+		amount    int64
+		wantErr   string
+		wantTotal int64
+	}{
+		{name: "refunds a succeeded intent", status: statusSucceeded, paid: 240000, amount: 150000, wantErr: "", wantTotal: 150000},
+		{name: "accumulates partial refunds", status: statusSucceeded, paid: 240000, already: 150000, amount: 90000, wantErr: "", wantTotal: 240000},
+		{name: "rejects an unpaid intent", status: statusRequiresAction, paid: 240000, amount: 90000, wantErr: "not_succeeded"},
+		{name: "rejects a failed intent", status: statusFailed, paid: 240000, amount: 90000, wantErr: "not_succeeded"},
+		{name: "rejects over-refund", status: statusSucceeded, paid: 240000, already: 200000, amount: 90000, wantErr: "over_refund"},
+		{name: "rejects a non-positive amount", status: statusSucceeded, paid: 240000, amount: 0, wantErr: "invalid_amount"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newStore()
+			intent := st.Create("order_1", tc.paid, "THB", "http://cb", "http://ret")
+			intent.Status = tc.status
+			intent.RefundedSatang = tc.already
+			got, errCode := st.Refund(intent.ID, tc.amount)
+			if errCode != tc.wantErr {
+				t.Fatalf("errCode = %q, want %q", errCode, tc.wantErr)
+			}
+			if tc.wantErr == "" && got.RefundedSatang != tc.wantTotal {
+				t.Errorf("RefundedSatang = %d, want %d", got.RefundedSatang, tc.wantTotal)
+			}
+			if tc.wantErr != "" && intent.RefundedSatang != tc.already {
+				t.Errorf("RefundedSatang moved to %d on a rejected refund, want %d", intent.RefundedSatang, tc.already)
+			}
+		})
+	}
+}
+
+func TestStoreRefundUnknownIntent(t *testing.T) {
+	if _, errCode := newStore().Refund("pi_missing", 100); errCode != "not_found" {
+		t.Errorf("errCode = %q, want not_found", errCode)
+	}
+}
+
+func TestHandleRefundDispatchesRefundedEvent(t *testing.T) {
+	events := make(chan Event, 2)
+	callback := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var event Event
+		if err := json.NewDecoder(r.Body).Decode(&event); err == nil {
+			events <- event
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer callback.Close()
+
+	cfg := loadConfig()
+	st := newStore()
+	srv := newServer(cfg, st, testDispatcher(true, []time.Duration{0}))
+	intent := st.Create("order_1", 240000, "THB", callback.URL, "http://ret")
+	intent.Status = statusSucceeded
+
+	req := httptest.NewRequest(http.MethodPost, "/intents/"+intent.ID+"/refunds",
+		strings.NewReader(`{"amountSatang":150000,"reference":"rf_test_1"}`))
+	req.Header.Set("Authorization", "Bearer "+cfg.apiKey)
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201: %s", rec.Code, rec.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("bad response json: %v", err)
+	}
+	refundID, _ := body["refundId"].(string)
+	if !strings.HasPrefix(refundID, "re_") {
+		t.Errorf("refundId = %q, want re_ prefix", refundID)
+	}
+	for i := 0; i < 2; i++ {
+		select {
+		case event := <-events:
+			if event.Type != "payment.refunded" {
+				t.Errorf("event type = %q, want payment.refunded", event.Type)
+			}
+			if event.AmountSatang != 150000 {
+				t.Errorf("event amount = %d, want the refund amount 150000", event.AmountSatang)
+			}
+			if event.RefundID != refundID {
+				t.Errorf("event refundId = %q, want %q", event.RefundID, refundID)
+			}
+			if event.Reference != "rf_test_1" {
+				t.Errorf("event reference = %q, want rf_test_1 echoed back", event.Reference)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("expected 2 webhook deliveries (double-send), got %d", i)
+		}
+	}
+}
+
+func TestHandleRefundRejectsBadKeyAndBadStates(t *testing.T) {
+	cfg := loadConfig()
+	st := newStore()
+	srv := newServer(cfg, st, testDispatcher(false, []time.Duration{0}))
+	paid := st.Create("order_1", 240000, "THB", "http://cb.invalid", "http://ret")
+	paid.Status = statusSucceeded
+	pending := st.Create("order_2", 240000, "THB", "http://cb.invalid", "http://ret")
+
+	cases := []struct {
+		name   string
+		id     string
+		key    string
+		body   string
+		status int
+	}{
+		{name: "bad api key", id: paid.ID, key: "wrong", body: `{"amountSatang":100}`, status: http.StatusUnauthorized},
+		{name: "unknown intent", id: "pi_missing", key: cfg.apiKey, body: `{"amountSatang":100}`, status: http.StatusNotFound},
+		{name: "not succeeded", id: pending.ID, key: cfg.apiKey, body: `{"amountSatang":100}`, status: http.StatusConflict},
+		{name: "over refund", id: paid.ID, key: cfg.apiKey, body: `{"amountSatang":999999}`, status: http.StatusUnprocessableEntity},
+		{name: "bad body", id: paid.ID, key: cfg.apiKey, body: `nope`, status: http.StatusBadRequest},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/intents/"+tc.id+"/refunds", strings.NewReader(tc.body))
+			req.Header.Set("Authorization", "Bearer "+tc.key)
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, req)
+			if rec.Code != tc.status {
+				t.Errorf("status = %d, want %d: %s", rec.Code, tc.status, rec.Body.String())
+			}
+		})
+	}
+}

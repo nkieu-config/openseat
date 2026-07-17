@@ -50,6 +50,11 @@ type createIntentRequest struct {
 	ReturnURL    string `json:"returnUrl"`
 }
 
+type refundRequest struct {
+	AmountSatang int64  `json:"amountSatang"`
+	Reference    string `json:"reference"`
+}
+
 type server struct {
 	cfg        config
 	store      *store
@@ -63,6 +68,7 @@ func newServer(cfg config, st *store, dp *dispatcher) *server {
 	s.mux.HandleFunc("POST /intents", s.handleCreateIntent)
 	s.mux.HandleFunc("GET /pay/{id}", s.handlePayPage)
 	s.mux.HandleFunc("POST /pay/{id}/confirm", s.handleConfirm)
+	s.mux.HandleFunc("POST /intents/{id}/refunds", s.handleRefund)
 	return s
 }
 
@@ -152,6 +158,49 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	http.Redirect(w, r, withResult(intent.ReturnURL, intent.Status), http.StatusSeeOther)
+}
+
+func (s *server) handleRefund(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Authorization") != "Bearer "+s.cfg.apiKey {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid api key"})
+		return
+	}
+	var req refundRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json body"})
+		return
+	}
+	intent, errCode := s.store.Refund(r.PathValue("id"), req.AmountSatang)
+	switch errCode {
+	case "not_found":
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "payment intent not found"})
+		return
+	case "invalid_amount":
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "amountSatang must be positive"})
+		return
+	case "not_succeeded":
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "intent is not succeeded"})
+		return
+	case "over_refund":
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "refund exceeds amount paid"})
+		return
+	}
+	refundID := newID("re_")
+	s.dispatcher.Send(intent.CallbackURL, Event{
+		ID:           newID("evt_"),
+		Type:         "payment.refunded",
+		IntentID:     intent.ID,
+		OrderID:      intent.OrderID,
+		AmountSatang: req.AmountSatang,
+		RefundID:     refundID,
+		Reference:    req.Reference,
+		CreatedAt:    time.Now(),
+	})
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"refundId":       refundID,
+		"status":         "succeeded",
+		"refundedSatang": intent.RefundedSatang,
+	})
 }
 
 func main() {

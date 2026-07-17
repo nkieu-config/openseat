@@ -14,6 +14,8 @@ type Event struct {
 	IntentID     string    `json:"intentId"`
 	OrderID      string    `json:"orderId"`
 	AmountSatang int64     `json:"amountSatang"`
+	RefundID     string    `json:"refundId,omitempty"`
+	Reference    string    `json:"reference,omitempty"`
 	CreatedAt    time.Time `json:"createdAt"`
 }
 
