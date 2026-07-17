@@ -93,7 +93,8 @@ function OrderView() {
   }, [params.id, guestToken, authLoading, reloadKey]);
 
   useEffect(() => {
-    if (!order || order.status !== "awaiting_payment") {
+    const liveStatuses = ["awaiting_payment", "paid", "partially_refunded"];
+    if (!order || !liveStatuses.includes(order.status)) {
       return;
     }
     let cancelled = false;
@@ -193,7 +194,9 @@ function OrderView() {
           <span className="flex size-8 items-center justify-center rounded-full bg-primary/15 text-primary">
             <CircleCheck className="size-4" aria-hidden="true" />
           </span>
-          <Badge variant={order.status === "paid" ? "default" : "secondary"}>{order.status}</Badge>
+          <Badge variant={order.status === "paid" ? "default" : "secondary"}>
+            {order.status.replace(/_/g, " ")}
+          </Badge>
           <span className="font-mono text-xs text-muted-foreground">{order.id.slice(0, 8)}</span>
         </div>
         <h1 className="text-3xl font-semibold sm:text-4xl">
@@ -205,6 +208,12 @@ function OrderView() {
         <p className="text-sm text-muted-foreground">
           A copy of these tickets was emailed to {order.buyerEmail}. Show a QR code at the door.
         </p>
+        {order.refundedSatang > 0 ? (
+          <p className="text-sm text-signal-warn">
+            {formatPrice(order.refundedSatang)} refunded — refunded tickets are no
+            longer valid for entry.
+          </p>
+        ) : null}
       </div>
       <Separator />
       <div className="grid gap-4 sm:grid-cols-2">
@@ -222,6 +231,7 @@ function OrderView() {
                 : ticket.attendeeName
             }
             qrToken={ticket.qrToken}
+            status={ticket.status}
           />
         ))}
       </div>

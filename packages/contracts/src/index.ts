@@ -101,8 +101,16 @@ export type OrderTicket = {
 
 export type OrderDetail = {
   id: string;
-  status: 'pending' | 'awaiting_payment' | 'paid' | 'expired' | 'canceled';
+  status:
+    | 'pending'
+    | 'awaiting_payment'
+    | 'paid'
+    | 'expired'
+    | 'canceled'
+    | 'partially_refunded'
+    | 'refunded';
   totalSatang: number;
+  refundedSatang: number;
   guestToken: string;
   buyerEmail: string;
   buyerName: string;
