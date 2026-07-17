@@ -338,4 +338,29 @@ describe('Payments (e2e)', () => {
     const tickets = await prisma.ticket.count({ where: { orderId: order.id } });
     expect(tickets).toBe(0);
   });
+
+  it('acknowledges an unknown event type without cancelling the order', async () => {
+    const order = await createPaidGaOrder();
+    const payment = await prisma.payment.findUniqueOrThrow({
+      where: { orderId: order.id },
+    });
+
+    await sendWebhook({
+      id: `evt_disputed_${order.id}`,
+      type: 'payment.disputed',
+      intentId: payment.providerIntentId,
+      orderId: order.id,
+      amountSatang: 50_000,
+      createdAt: new Date().toISOString(),
+    });
+
+    const untouched = await prisma.order.findUniqueOrThrow({
+      where: { id: order.id },
+    });
+    expect(untouched.status).toBe('awaiting_payment');
+    const stillReserved = await prisma.payment.findUniqueOrThrow({
+      where: { orderId: order.id },
+    });
+    expect(stillReserved.status).toBe('requires_action');
+  });
 });

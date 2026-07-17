@@ -9,10 +9,12 @@ import { ordersPaid, webhookEvents } from '../telemetry/metrics';
 
 export type PaymockWebhookEvent = {
   id: string;
-  type: 'payment.succeeded' | 'payment.failed';
+  type: string;
   intentId: string;
   orderId: string;
   amountSatang: number;
+  refundId?: string;
+  reference?: string;
   createdAt: string;
 };
 
@@ -82,16 +84,32 @@ export class PaymentsService {
   }
 
   async processEvent(event: PaymockWebhookEvent): Promise<void> {
-    if (event.type === 'payment.succeeded') {
-      await this.handleSucceeded(event);
-    } else {
-      await this.handleFailed(event);
+    switch (event.type) {
+      case 'payment.succeeded':
+        await this.handleSucceeded(event);
+        break;
+      case 'payment.failed':
+        await this.handleFailed(event);
+        break;
+      case 'payment.refunded':
+        this.handleRefunded(event);
+        break;
+      default:
+        this.logger.warn(`ignoring unknown webhook type: ${event.type}`);
+        webhookEvents.add(1, { outcome: 'ignored' });
+        return;
     }
     await this.prisma.webhookEvent.updateMany({
       where: { providerEventId: event.id },
       data: { processedAt: new Date() },
     });
     webhookEvents.add(1, { outcome: 'processed' });
+  }
+
+  private handleRefunded(event: PaymockWebhookEvent): void {
+    this.logger.warn(
+      `received payment.refunded for order ${event.orderId} before the refund settlement path exists`,
+    );
   }
 
   private async handleSucceeded(event: PaymockWebhookEvent) {
