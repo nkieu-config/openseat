@@ -15,8 +15,9 @@ The vocabulary below is the project's source of truth for naming things — in c
 
 - **Attendee** — anyone holding a ticket; may be a guest (email only, no account).
 - **Hold** — a temporary claim on a seat (7 minutes) while the buyer decides. Holds expire, get taken over, or convert into tickets. Never called "lock" or "reservation".
-- **Order** — a buyer's purchase attempt. States: `awaiting_payment → paid | expired | canceled`.
+- **Order** — a buyer's purchase attempt. States: `awaiting_payment → paid | expired | canceled`; a paid order may go on to `partially_refunded → refunded` as its tickets are refunded.
 - **Ticket** — the issued right to attend; carries the QR token. Issuing is the act of converting a paid order's holds into tickets.
+- **Void** — the terminal ticket state a refund leaves behind. A void ticket is invalid at the door and frees its seat back to sale, but keeps its `seat_id` so the buyer can still see which seat they gave up. Never a transient state — nothing un-voids a ticket.
 - **Check-in** — scanning a ticket QR at the door; a ticket checks in at most once.
 
 ## Organizer console
@@ -36,5 +37,6 @@ The vocabulary below is the project's source of truth for naming things — in c
 
 - **PayMock** — our simulated external payment provider (Go). Speaks payment intents and signed webhooks; can inject failures.
 - **Payment intent** — PayMock's record of an attempt to pay an order.
+- **Refund** — the money-back record for a chosen subset of a paid order's tickets. Requested by the organizer; voids the tickets and returns their inventory at once, then settles the money on the provider's `payment.refunded` webhook (ADR 0011). A ticket refunds at its full paid price — granularity is which tickets, not how much of one.
 - **Outbox** — the `outbox_events` table written transactionally with state changes; the dispatcher relays rows to queues.
 - **Satang** — all money is stored as integer satang (THB only).

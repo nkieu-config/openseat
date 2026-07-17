@@ -69,7 +69,9 @@ The waiting room (M5) turns on per event at `sale_opens_at`: checkout requires a
 - M5 Waiting room & load proof — gate service (Go), admission tokens, k6 drop scenario with a published report, Simulate Crowd demo mode
 - M6 Seat-map editor & polish — drag-and-drop editor, i18n (EN/TH), OG images, demo video, complete docs
 
-Deliberately out of scope (recorded here on purpose): real money and refund flows, ticket resale, organizer team RBAC, native mobile apps.
+Deliberately out of scope (recorded here on purpose): real-money processing, ticket resale, organizer team RBAC, native mobile apps.
+
+> Update (2026-07-18): refunds were revisited in M9 — the cut was right for a demo and stopped being right once the product claimed production extensibility. The mechanism (organizer-triggered, reclaim-first, settled on the provider's webhook) lives in `docs/specs/2026-07-17-m9-refunds-design.md` and [ADR 0011](../adr/0011-refunds-reclaim-first.md); real-money processing and the remaining items stay out of scope.
 
 ## Quality bars
 

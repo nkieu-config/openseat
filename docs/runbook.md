@@ -1,6 +1,6 @@
 # OpenSeat Runbook
 
-How to detect, diagnose, and mitigate the six incidents most likely to hit this deployment. Telemetry lives in Grafana Cloud (dashboard: **OpenSeat Ops**, exported to `docs/observability/openseat-ops-dashboard.json`); services export OTLP directly per ADR 0009.
+How to detect, diagnose, and mitigate the seven incidents most likely to hit this deployment. Telemetry lives in Grafana Cloud (dashboard: **OpenSeat Ops**, exported to `docs/observability/openseat-ops-dashboard.json`); services export OTLP directly per ADR 0009.
 
 Conventions used below:
 
@@ -55,6 +55,17 @@ Conventions used below:
 **Diagnose.** PayMock is a Render free service and is *allowed* to sleep — the keep-alive cron deliberately covers only the API (ADR 0009's hosting trade-off). Confirm with `{service_name="openseat-api"} | json |= "paymock"`, or open the checkout trace in Tempo and read the failed outbound span to the PayMock origin. A cold start measured **22.5 s** on 2026-07-16, far past the client's timeout, which is why the first buyer after an idle period always eats a 502 and a retry moments later succeeds.
 
 **Mitigate.** Wake it — `curl -sS https://<paymock-origin>/health` — then retry; the next attempt succeeds. Nothing is stranded: `createIntent` runs *after* the order transaction commits, and its failure path cancels the order (`expireOrder(orderId, 'canceled')` in `orders.service.ts`), releasing the seats in one transaction instead of holding them for the 15-minute payment window. A PayMock nap therefore leaves a trail of `canceled` orders, never stuck `awaiting_payment` ones. Ping `/health` before recording a demo.
+
+## 7. Refund stuck pending
+
+**Detect.** The organizer's order roster shows a refund sitting `pending` well past a minute — settlement is normally near-instant locally and a few seconds in production. The seat is already back on sale and the ticket is already `void` (reclaim committed in the API's own transaction, ADR 0011), so this is *only* the money leg: `refunds_total{result="succeeded"}` never increments for it, and there is no matching `refunds_total{result="failed"}` either — a failed money leg would have thrown synchronously and shown `failed` with a Retry button, not `pending`. A pending refund with neither counter moving means the reclaim happened but the `payment.refunded` webhook never settled it.
+
+**Diagnose.** Two distinct shapes, told apart by whether the webhook arrived at all:
+
+- *The webhook never landed.* `webhook_events_total` is flat with no `payment.refunded` in `{service_name="openseat-api"} | json |= "refunded"`. PayMock accepted the refund (the sync `201` returned, which is why the leg is not `failed`) but its dispatcher gave up after backoff, or PayMock went to sleep before the delivery — it is a Render free service and is allowed to nap (incident 6, ADR 0009). Confirm from PayMock's own Render logs that the delivery attempts exhausted.
+- *The webhook landed but matched nothing.* `webhook_events_total{outcome="processed"}` moved and the log shows a `payment.refunded` line, yet the refund is still `pending`. That means `handleRefunded` found `updated.count === 0` — the event's `reference` did not match any pending refund id. The money moved on the provider while our refund row never settled. This is the dangerous case and it means a lost or mismatched `reference` (ADR 0011's race is *supposed* to prevent exactly this, so a real occurrence points at a bug in the echo, not a transient).
+
+**Mitigate.** PayMock does not expose a webhook re-send, so recovery runs from our side. For the *never-landed* case, the organizer's **Retry** button re-runs the money leg (`POST …/refunds/:refundId/retry`); PayMock refunds again and re-emits the event, and dedup by `provider_event_id` plus the guarded `updateMany` make the extra delivery safe — a refund settles at most once. Wake PayMock first (`curl -sS https://<paymock-origin>/health`) if incident 6's signature is also present. For the *settled-but-unmatched* case, do **not** blindly retry — the provider has already moved the money, so a second refund would over-refund the intent (PayMock's `over_refund` guard will reject it, but the pending row still needs closing). Reconcile by hand: match the `payment.refunded` event's `reference` to the refund row, confirm the provider's cumulative `refundedSatang`, and settle the row directly, then file the `reference`-echo bug that let it slip.
 
 ## Escalation notes
 

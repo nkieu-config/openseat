@@ -1,6 +1,6 @@
 # M9 — Refunds ("Give the money back")
 
-Status: Approved (2026-07-17)
+Status: Accepted (2026-07-18) — implemented in M9; the reclaim-first design and its deviations are recorded in ADR 0011.
 
 ## Goal
 
