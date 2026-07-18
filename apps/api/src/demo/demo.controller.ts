@@ -8,9 +8,9 @@ import { REFRESH_COOKIE } from '../auth/auth.controller';
 import { DemoService } from './demo.service';
 
 class DemoLoginDto {
-  @ApiProperty({ enum: ['buyer', 'organizer'] })
-  @IsIn(['buyer', 'organizer'])
-  role!: 'buyer' | 'organizer';
+  @ApiProperty({ enum: ['buyer', 'organizer', 'staff'] })
+  @IsIn(['buyer', 'organizer', 'staff'])
+  role!: 'buyer' | 'organizer' | 'staff';
 }
 
 @ApiTags('demo')

@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export const DEMO_EMAILS = {
   buyer: 'demo-buyer@openseat.dev',
   organizer: 'demo-organizer@openseat.dev',
+  staff: 'demo-staff@openseat.dev',
 } as const;
 
 export type DemoRole = keyof typeof DEMO_EMAILS;

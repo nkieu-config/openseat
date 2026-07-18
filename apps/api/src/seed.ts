@@ -216,6 +216,7 @@ async function seedDropEvent(organizerId: string): Promise<number> {
     await prisma.refund.deleteMany({
       where: { order: { eventId: existing.id } },
     });
+    await prisma.teamMember.deleteMany({ where: { eventId: existing.id } });
     await prisma.order.deleteMany({ where: { eventId: existing.id } });
     await prisma.event.delete({ where: { id: existing.id } });
   }
@@ -278,6 +279,10 @@ async function main() {
     'OpenSeat Demo Organizer',
   );
   await upsertDemoUser('demo-buyer@openseat.dev', 'Demo Buyer');
+  const staff = await upsertDemoUser(
+    'demo-staff@openseat.dev',
+    'Demo Door Staff',
+  );
 
   const existing = await prisma.event.findUnique({
     where: { slug: DEMO_EVENT_SLUG },
@@ -290,6 +295,7 @@ async function main() {
     await prisma.refund.deleteMany({
       where: { order: { eventId: existing.id } },
     });
+    await prisma.teamMember.deleteMany({ where: { eventId: existing.id } });
     await prisma.order.deleteMany({ where: { eventId: existing.id } });
     await prisma.event.delete({ where: { id: existing.id } });
   }
@@ -362,6 +368,25 @@ async function main() {
   await prisma.ticketType.update({
     where: { id: generalAdmission.id },
     data: { remaining: 200 - 24 },
+  });
+
+  await prisma.teamMember.createMany({
+    data: [
+      {
+        eventId: event.id,
+        email: staff.email,
+        userId: staff.id,
+        role: 'staff',
+        invitedById: organizer.id,
+        linkedAt: new Date(),
+      },
+      {
+        eventId: event.id,
+        email: 'demo-producer@openseat.dev',
+        role: 'manager',
+        invitedById: organizer.id,
+      },
+    ],
   });
 
   const seatedSold = await seedSeatMap(event.id);
