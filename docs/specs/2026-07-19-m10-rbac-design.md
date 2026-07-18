@@ -1,6 +1,6 @@
 # M10 — Event team RBAC ("Who may pull this lever")
 
-Status: Proposed (2026-07-19)
+Status: Approved (2026-07-19)
 
 ## Goal
 
