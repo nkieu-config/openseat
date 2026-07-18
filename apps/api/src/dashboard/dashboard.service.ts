@@ -6,6 +6,7 @@ import {
   DashboardTotals,
   EventCard,
   EventDashboard,
+  EventSummary,
   OrderRow,
   SectionOccupancy,
   TierStat,
@@ -55,6 +56,10 @@ export class DashboardService {
       include: {
         ticketTypes: { select: { quantity: true } },
         seatMap: { select: { id: true } },
+        team: {
+          where: { userId: organizerId },
+          select: { role: true },
+        },
       },
     });
 
@@ -72,6 +77,15 @@ export class DashboardService {
             _sum: { totalSatang: true, refundedSatang: true },
           }),
         ]);
+        const myRole =
+          event.organizerId === organizerId
+            ? 'owner'
+            : (event.team[0]?.role ?? 'staff');
+        const grossSatang =
+          myRole === 'staff'
+            ? null
+            : (grossAgg._sum.totalSatang ?? 0) -
+              (grossAgg._sum.refundedSatang ?? 0);
         return {
           id: event.id,
           slug: event.slug,
@@ -87,19 +101,40 @@ export class DashboardService {
           ),
           ticketsSold,
           ticketsCheckedIn,
-          grossSatang:
-            (grossAgg._sum.totalSatang ?? 0) -
-            (grossAgg._sum.refundedSatang ?? 0),
+          grossSatang,
+          myRole,
         };
       }),
     );
+  }
+
+  async eventSummary(eventId: string, userId: string): Promise<EventSummary> {
+    const { event, role } = await this.access.requireEventRole(
+      eventId,
+      userId,
+      'staff',
+    );
+    const [ticketsSold, ticketsCheckedIn] = await Promise.all([
+      this.prisma.ticket.count({ where: { eventId, status: { not: 'void' } } }),
+      this.prisma.ticket.count({ where: { eventId, status: 'checked_in' } }),
+    ]);
+    return {
+      id: event.id,
+      title: event.title,
+      venueName: event.venueName,
+      startsAt: event.startsAt,
+      status: event.status,
+      ticketsSold,
+      ticketsCheckedIn,
+      myRole: role,
+    };
   }
 
   async eventDashboard(
     eventId: string,
     organizerId: string,
   ): Promise<EventDashboard> {
-    const { event } = await this.access.requireEventRole(
+    const { event, role } = await this.access.requireEventRole(
       eventId,
       organizerId,
       'manager',
@@ -245,11 +280,13 @@ export class DashboardService {
         ticketsSold,
         ticketsCheckedIn,
         grossSatang: totals.grossSatang,
+        myRole: role,
       },
       totals,
       timeline,
       tiers,
       sections,
+      myRole: role,
     };
   }
 

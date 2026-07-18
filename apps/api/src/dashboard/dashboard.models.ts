@@ -20,7 +20,20 @@ export class EventCard {
   @Field(() => Int) capacity!: number;
   @Field(() => Int) ticketsSold!: number;
   @Field(() => Int) ticketsCheckedIn!: number;
-  @Field(() => Float) grossSatang!: number;
+  @Field(() => Float, { nullable: true }) grossSatang!: number | null;
+  @Field() myRole!: string;
+}
+
+@ObjectType()
+export class EventSummary {
+  @Field(() => ID) id!: string;
+  @Field() title!: string;
+  @Field() venueName!: string;
+  @Field(() => GraphQLISODateTime) startsAt!: Date;
+  @Field() status!: string;
+  @Field(() => Int) ticketsSold!: number;
+  @Field(() => Int) ticketsCheckedIn!: number;
+  @Field() myRole!: string;
 }
 
 @ObjectType()
@@ -71,6 +84,7 @@ export class EventDashboard {
   @Field(() => [TimelineBucket]) timeline!: TimelineBucket[];
   @Field(() => [TierStat]) tiers!: TierStat[];
   @Field(() => [SectionOccupancy]) sections!: SectionOccupancy[];
+  @Field() myRole!: string;
 }
 
 @ObjectType()

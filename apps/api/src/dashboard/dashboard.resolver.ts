@@ -7,6 +7,7 @@ import {
   Attendee,
   EventCard,
   EventDashboard,
+  EventSummary,
   OrderRow,
 } from './dashboard.models';
 
@@ -26,6 +27,14 @@ export class DashboardResolver {
     @Args('eventId', { type: () => ID }) eventId: string,
   ): Promise<EventDashboard> {
     return this.dashboard.eventDashboard(eventId, user.id);
+  }
+
+  @Query(() => EventSummary)
+  eventSummary(
+    @GqlCurrentUser() user: RequestUser,
+    @Args('eventId', { type: () => ID }) eventId: string,
+  ): Promise<EventSummary> {
+    return this.dashboard.eventSummary(eventId, user.id);
   }
 
   @Query(() => [Attendee])

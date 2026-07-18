@@ -274,6 +274,17 @@ describe('Access ladder across the console (e2e)', () => {
       .send({ ticketIds: [ticketId] });
   }
 
+  function gql(
+    query: string,
+    variables: Record<string, unknown>,
+    token: string,
+  ) {
+    return request(app.getHttpServer())
+      .post('/api/graphql')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ query, variables });
+  }
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -340,6 +351,68 @@ describe('Access ladder across the console (e2e)', () => {
       where: { id: { in: [eventId, outsiderEventId] } },
     });
     await app.close();
+  });
+
+  it('gives staff a summary read with counts and their role', async () => {
+    const res = await gql(
+      `query ($id: ID!) { eventSummary(eventId: $id) { title ticketsSold myRole } }`,
+      { id: eventId },
+      staffToken,
+    ).expect(200);
+    const body = res.body as {
+      data?: {
+        eventSummary?: { title: string; ticketsSold: number; myRole: string };
+      };
+      errors?: unknown[];
+    };
+    expect(body.errors).toBeUndefined();
+    expect(body.data?.eventSummary?.myRole).toBe('staff');
+    expect(typeof body.data?.eventSummary?.ticketsSold).toBe('number');
+  });
+
+  it('forbids staff from the money dashboard', async () => {
+    const res = await gql(
+      `query ($id: ID!) { eventDashboard(eventId: $id) { myRole } }`,
+      { id: eventId },
+      staffToken,
+    ).expect(200);
+    const body = res.body as { data?: unknown; errors?: { message: string }[] };
+    expect(body.errors?.length).toBeGreaterThan(0);
+  });
+
+  it('tells a manager their role on the dashboard', async () => {
+    const res = await gql(
+      `query ($id: ID!) { eventDashboard(eventId: $id) { myRole totals { grossSatang } } }`,
+      { id: eventId },
+      managerToken,
+    ).expect(200);
+    const body = res.body as {
+      data?: { eventDashboard?: { myRole: string } };
+      errors?: unknown[];
+    };
+    expect(body.errors).toBeUndefined();
+    expect(body.data?.eventDashboard?.myRole).toBe('manager');
+  });
+
+  it('nulls the gross on a staff card but keeps it for the owner', async () => {
+    type Card = { id: string; grossSatang: number | null; myRole: string };
+    const listFor = async (token: string): Promise<Card> => {
+      const res = await gql(
+        `query { organizerEvents { id grossSatang myRole } }`,
+        {},
+        token,
+      ).expect(200);
+      const body = res.body as { data?: { organizerEvents?: Card[] } };
+      const card = body.data?.organizerEvents?.find((c) => c.id === eventId);
+      expect(card).toBeDefined();
+      return card!;
+    };
+    const staffCard = await listFor(staffToken);
+    expect(staffCard.myRole).toBe('staff');
+    expect(staffCard.grossSatang).toBeNull();
+    const ownerCard = await listFor(ownerToken);
+    expect(ownerCard.myRole).toBe('owner');
+    expect(typeof ownerCard.grossSatang).toBe('number');
   });
 
   it('gates editing the event by the whole ladder', async () => {

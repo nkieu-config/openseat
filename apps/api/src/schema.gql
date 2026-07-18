@@ -30,9 +30,10 @@ scalar DateTime
 
 type EventCard {
   capacity: Int!
-  grossSatang: Float!
+  grossSatang: Float
   id: ID!
   isDemo: Boolean!
+  myRole: String!
   seated: Boolean!
   slug: String!
   startsAt: DateTime!
@@ -45,10 +46,22 @@ type EventCard {
 
 type EventDashboard {
   event: EventCard!
+  myRole: String!
   sections: [SectionOccupancy!]!
   tiers: [TierStat!]!
   timeline: [TimelineBucket!]!
   totals: DashboardTotals!
+}
+
+type EventSummary {
+  id: ID!
+  myRole: String!
+  startsAt: DateTime!
+  status: String!
+  ticketsCheckedIn: Int!
+  ticketsSold: Int!
+  title: String!
+  venueName: String!
 }
 
 type OrderRow {
@@ -75,6 +88,7 @@ type Query {
   eventAttendees(eventId: ID!, limit: Int = 500): [Attendee!]!
   eventDashboard(eventId: ID!): EventDashboard!
   eventOrders(eventId: ID!, limit: Int = 200): [OrderRow!]!
+  eventSummary(eventId: ID!): EventSummary!
   organizerEvents: [EventCard!]!
 }
 
