@@ -78,6 +78,7 @@ export class AuthService {
       const user = await this.prisma.user.create({
         data: { email, displayName: input.displayName.trim(), passwordHash },
       });
+      await this.claimMemberships(user.id, user.email);
       return { user: toPublicUser(user), tokens: await this.issueTokens(user) };
     } catch (error) {
       if (isUniqueViolation(error)) {
@@ -168,13 +169,15 @@ export class AuthService {
     }
 
     try {
-      return await this.prisma.user.create({
+      const created = await this.prisma.user.create({
         data: {
           email: input.email,
           displayName: input.displayName,
           googleId: input.googleId,
         },
       });
+      await this.claimMemberships(created.id, created.email);
+      return created;
     } catch (error) {
       if (isUniqueViolation(error)) {
         const existing = await this.prisma.user.findFirst({
@@ -188,6 +191,13 @@ export class AuthService {
       }
       throw error;
     }
+  }
+
+  private async claimMemberships(userId: string, email: string): Promise<void> {
+    await this.prisma.teamMember.updateMany({
+      where: { email, userId: null },
+      data: { userId, linkedAt: new Date() },
+    });
   }
 
   async issueTokens(user: User): Promise<AuthTokens> {

@@ -20,6 +20,9 @@ describe('AuthService', () => {
       update: jest.fn(),
       updateMany: jest.fn(),
     },
+    teamMember: {
+      updateMany: jest.fn(),
+    },
   };
 
   const baseUser = {

@@ -6,6 +6,7 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
+import { AccessModule } from './access/access.module';
 import { AuthModule } from './auth/auth.module';
 import { CheckinModule } from './checkin/checkin.module';
 import { GqlThrottlerGuard } from './common/gql-throttler.guard';
@@ -24,6 +25,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { QueuesModule } from './queues/queues.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SeatmapsModule } from './seatmaps/seatmaps.module';
+import { TeamModule } from './team/team.module';
 import { TelemetryExceptionFilter } from './telemetry/telemetry-exception.filter';
 
 @Module({
@@ -63,6 +65,8 @@ import { TelemetryExceptionFilter } from './telemetry/telemetry-exception.filter
     }),
     PrismaModule,
     AuthModule,
+    AccessModule,
+    TeamModule,
     DemoModule,
     EventsModule,
     DashboardModule,
