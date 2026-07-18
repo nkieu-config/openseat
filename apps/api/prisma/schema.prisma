@@ -22,6 +22,8 @@ model User {
   orders           Order[]
   refreshTokens    RefreshToken[]
   refundsRequested Refund[]
+  memberships      TeamMember[]   @relation("memberships")
+  invitations      TeamMember[]   @relation("invitations")
 
   @@map("users")
 }
@@ -69,10 +71,35 @@ model Event {
   seatMap     SeatMap?
   seats       Seat[]
   holds       Hold[]
+  team        TeamMember[]
 
   @@index([organizerId])
   @@index([status, startsAt])
   @@map("events")
+}
+
+enum EventRole {
+  manager
+  staff
+}
+
+model TeamMember {
+  id          String    @id @default(uuid())
+  eventId     String    @map("event_id")
+  email       String
+  userId      String?   @map("user_id")
+  role        EventRole
+  invitedById String    @map("invited_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  linkedAt    DateTime? @map("linked_at")
+
+  event     Event @relation(fields: [eventId], references: [id])
+  user      User? @relation("memberships", fields: [userId], references: [id])
+  invitedBy User  @relation("invitations", fields: [invitedById], references: [id])
+
+  @@unique([eventId, email])
+  @@index([userId])
+  @@map("team_members")
 }
 
 enum TicketTypeKind {
