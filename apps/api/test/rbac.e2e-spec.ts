@@ -185,3 +185,227 @@ describe('Team roster + access ladder (e2e)', () => {
       .expect(404);
   });
 });
+
+describe('Access ladder across the console (e2e)', () => {
+  let app: INestApplication<App>;
+  let prisma: PrismaService;
+  let ownerToken: string;
+  let managerToken: string;
+  let staffToken: string;
+  let outsiderToken: string;
+  let eventId: string;
+  let outsiderEventId: string;
+  let orderId: string;
+  let managerMemberId: string;
+  let staffMemberId: string;
+  let qrTokens: string[];
+  let ticketIds: string[];
+  const stamp = `${process.pid}-${Date.now()}`;
+  const ownerEmail = `mx-owner-${stamp}@example.com`;
+  const managerEmail = `mx-manager-${stamp}@example.com`;
+  const staffEmail = `mx-staff-${stamp}@example.com`;
+  const outsiderEmail = `mx-outsider-${stamp}@example.com`;
+
+  const SEAT_MAP_BODY = {
+    sections: [
+      {
+        name: 'Floor',
+        rows: 2,
+        cols: 2,
+        tierName: 'GA Floor',
+        priceSatang: 5000,
+      },
+    ],
+  };
+
+  async function register(email: string, name: string): Promise<string> {
+    const res = await request(app.getHttpServer())
+      .post('/api/auth/register')
+      .send({ email, password: 'mx-pass-123', displayName: name })
+      .expect(201);
+    return (res.body as { accessToken: string }).accessToken;
+  }
+
+  async function createPublishedEvent(token: string, title: string) {
+    const res = await request(app.getHttpServer())
+      .post('/api/events')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        title,
+        venueName: 'Ladder Hall',
+        startsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        ticketTypes: [{ name: 'Free GA', quantity: 20, priceSatang: 0 }],
+      })
+      .expect(201);
+    const body = res.body as { id: string; ticketTypes: { id: string }[] };
+    await request(app.getHttpServer())
+      .post(`/api/events/${body.id}/publish`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(201);
+    return { id: body.id, ticketTypeId: body.ticketTypes[0].id };
+  }
+
+  function addMember(email: string, role: string) {
+    return request(app.getHttpServer())
+      .post(`/api/events/${eventId}/team`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ email, role })
+      .expect(201);
+  }
+
+  function patchEvent(token: string, id = eventId) {
+    return request(app.getHttpServer())
+      .patch(`/api/events/${id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Renamed' });
+  }
+
+  function scan(token: string, qrToken: string) {
+    return request(app.getHttpServer())
+      .post(`/api/events/${eventId}/checkin`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ qrToken });
+  }
+
+  function refund(token: string, ticketId: string) {
+    return request(app.getHttpServer())
+      .post(`/api/events/${eventId}/orders/${orderId}/refunds`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ ticketIds: [ticketId] });
+  }
+
+  beforeAll(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+    app = moduleFixture.createNestApplication({ rawBody: true });
+    app.setGlobalPrefix('api');
+    app.use(cookieParser());
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
+    await app.init();
+    await app.listen(0);
+    prisma = app.get(PrismaService);
+
+    ownerToken = await register(ownerEmail, 'MX Owner');
+    managerToken = await register(managerEmail, 'MX Manager');
+    staffToken = await register(staffEmail, 'MX Staff');
+    outsiderToken = await register(outsiderEmail, 'MX Outsider');
+
+    const primary = await createPublishedEvent(ownerToken, 'Ladder Show');
+    eventId = primary.id;
+    const outsiderEvent = await createPublishedEvent(
+      outsiderToken,
+      'Outsider Show',
+    );
+    outsiderEventId = outsiderEvent.id;
+
+    const orderRes = await request(app.getHttpServer())
+      .post(`/api/events/${eventId}/orders`)
+      .send({
+        items: [{ ticketTypeId: primary.ticketTypeId, quantity: 4 }],
+        buyerEmail: 'fan@example.com',
+        buyerName: 'Fan',
+      })
+      .expect(201);
+    orderId = (orderRes.body as { id: string }).id;
+
+    const tickets = await prisma.ticket.findMany({
+      where: { orderId },
+      orderBy: { createdAt: 'asc' },
+    });
+    qrTokens = tickets.map((ticket) => ticket.qrToken);
+    ticketIds = tickets.map((ticket) => ticket.id);
+
+    managerMemberId = (
+      (await addMember(managerEmail, 'manager')).body as MemberRow
+    ).id;
+    staffMemberId = ((await addMember(staffEmail, 'staff')).body as MemberRow)
+      .id;
+  });
+
+  afterAll(async () => {
+    await prisma.refund.deleteMany({ where: { order: { eventId } } });
+    await prisma.teamMember.deleteMany({
+      where: { eventId: { in: [eventId, outsiderEventId] } },
+    });
+    await prisma.ticket.deleteMany({
+      where: { eventId: { in: [eventId, outsiderEventId] } },
+    });
+    await prisma.order.deleteMany({
+      where: { eventId: { in: [eventId, outsiderEventId] } },
+    });
+    await prisma.event.deleteMany({
+      where: { id: { in: [eventId, outsiderEventId] } },
+    });
+    await app.close();
+  });
+
+  it('gates editing the event by the whole ladder', async () => {
+    await patchEvent(outsiderToken).expect(404);
+    await patchEvent(staffToken).expect(403);
+    await patchEvent(managerToken).expect(200);
+    await patchEvent(ownerToken).expect(200);
+  });
+
+  it('lets staff scan tickets at the door', async () => {
+    const res = await scan(staffToken, qrTokens[0]).expect(201);
+    expect((res.body as { outcome: string }).outcome).toBe('checked_in');
+    await scan(outsiderToken, qrTokens[0]).expect(404);
+  });
+
+  it('keeps the attendee CSV to managers and up', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/events/${eventId}/attendees.csv`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .expect(403);
+    await request(app.getHttpServer())
+      .get(`/api/events/${eventId}/attendees.csv`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(200);
+  });
+
+  it('gates refunds at manager — the reason this milestone exists', async () => {
+    const denied = await refund(staffToken, ticketIds[1]).expect(403);
+    expect((denied.body as { message: string }).message).toBe(
+      'Your role does not allow this',
+    );
+    await refund(outsiderToken, ticketIds[1]).expect(404);
+    await refund(managerToken, ticketIds[1]).expect(201);
+  });
+
+  it('gates seat-map editing at manager', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/events/${eventId}/seat-map`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send(SEAT_MAP_BODY)
+      .expect(403);
+    await request(app.getHttpServer())
+      .post(`/api/events/${eventId}/seat-map`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send(SEAT_MAP_BODY)
+      .expect(201);
+  });
+
+  it('treats a member of one event as a stranger to another', async () => {
+    await patchEvent(managerToken, outsiderEventId).expect(404);
+  });
+
+  it('revokes access the instant a member is removed', async () => {
+    await request(app.getHttpServer())
+      .delete(`/api/events/${eventId}/team/${staffMemberId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(204);
+    await scan(staffToken, qrTokens[2]).expect(404);
+  });
+
+  it('demotes a manager to staff with immediate effect', async () => {
+    await request(app.getHttpServer())
+      .patch(`/api/events/${eventId}/team/${managerMemberId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ role: 'staff' })
+      .expect(200);
+    await patchEvent(managerToken).expect(403);
+  });
+});

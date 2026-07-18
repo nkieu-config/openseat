@@ -5,6 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { AccessService } from '../access/access.service';
 import { OutboxService } from '../outbox/outbox.service';
 import { PaymockClientService } from '../paymock-client/paymock-client.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -25,6 +26,7 @@ export class RefundsService {
     private readonly prisma: PrismaService,
     private readonly paymock: PaymockClientService,
     private readonly outbox: OutboxService,
+    private readonly access: AccessService,
   ) {}
 
   async create(input: {
@@ -35,6 +37,8 @@ export class RefundsService {
     idempotencyKey: string | null;
   }) {
     const { eventId, orderId, ticketIds, userId, idempotencyKey } = input;
+
+    await this.access.requireEventRole(eventId, userId, 'manager');
 
     if (idempotencyKey) {
       const existing = await this.prisma.refund.findUnique({
@@ -47,7 +51,7 @@ export class RefundsService {
     }
 
     const order = await this.prisma.order.findFirst({
-      where: { id: orderId, eventId, event: { organizerId: userId } },
+      where: { id: orderId, eventId },
       include: {
         items: true,
         payment: true,
@@ -163,16 +167,14 @@ export class RefundsService {
   }
 
   async retry(refundId: string, userId: string) {
-    const refund = await this.prisma.refund.findFirst({
-      where: {
-        id: refundId,
-        order: { event: { organizerId: userId } },
-      },
+    const refund = await this.prisma.refund.findUnique({
+      where: { id: refundId },
       include: { order: { include: { payment: true } } },
     });
     if (!refund) {
       throw new NotFoundException('Refund not found');
     }
+    await this.access.requireEventRole(refund.order.eventId, userId, 'manager');
     if (refund.status !== 'failed') {
       throw new ConflictException('Only a failed refund can be retried');
     }

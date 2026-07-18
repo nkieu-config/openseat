@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AccessService } from '../access/access.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ticketsCheckedIn } from '../telemetry/metrics';
 
@@ -30,24 +31,17 @@ function csvCell(value: string): string {
 
 @Injectable()
 export class CheckinService {
-  constructor(private readonly prisma: PrismaService) {}
-
-  private async ownedEvent(eventId: string, organizerId: string) {
-    const event = await this.prisma.event.findFirst({
-      where: { id: eventId, organizerId },
-    });
-    if (!event) {
-      throw new NotFoundException('Event not found');
-    }
-    return event;
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly access: AccessService,
+  ) {}
 
   async checkIn(
     eventId: string,
     organizerId: string,
     qrToken: string,
   ): Promise<CheckinResult> {
-    await this.ownedEvent(eventId, organizerId);
+    await this.access.requireEventRole(eventId, organizerId, 'staff');
     const ticket = await this.prisma.ticket.findUnique({
       where: { qrToken },
       include: ATTENDEE_INCLUDE,
@@ -83,7 +77,7 @@ export class CheckinService {
   }
 
   async attendeesCsv(eventId: string, organizerId: string): Promise<string> {
-    await this.ownedEvent(eventId, organizerId);
+    await this.access.requireEventRole(eventId, organizerId, 'manager');
     const tickets = await this.prisma.ticket.findMany({
       where: { eventId, status: { not: 'void' } },
       orderBy: [{ ticketType: { name: 'asc' } }, { createdAt: 'asc' }],

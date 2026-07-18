@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import { AccessService } from '../access/access.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto, UpdateTicketTypeDto } from './dto/update-event.dto';
@@ -32,17 +33,10 @@ const PUBLIC_EVENT_INCLUDE = {
 
 @Injectable()
 export class EventsService {
-  constructor(private readonly prisma: PrismaService) {}
-
-  private async ownedEvent(eventId: string, organizerId: string) {
-    const event = await this.prisma.event.findFirst({
-      where: { id: eventId, organizerId },
-    });
-    if (!event) {
-      throw new NotFoundException('Event not found');
-    }
-    return event;
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly access: AccessService,
+  ) {}
 
   async create(organizerId: string, dto: CreateEventDto) {
     const slug = `${slugify(dto.title)}-${randomBytes(3).toString('hex')}`;
@@ -71,7 +65,9 @@ export class EventsService {
 
   async listMine(organizerId: string) {
     const events = await this.prisma.event.findMany({
-      where: { organizerId },
+      where: {
+        OR: [{ organizerId }, { team: { some: { userId: organizerId } } }],
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         ticketTypes: { orderBy: { createdAt: 'asc' } },
@@ -94,13 +90,18 @@ export class EventsService {
       throw new NotFoundException('Event not found');
     }
     if (event.status !== 'published' && event.organizer.id !== viewerId) {
-      throw new NotFoundException('Event not found');
+      const isTeamMember = viewerId
+        ? (await this.access.membershipRole(event.id, viewerId)) !== null
+        : false;
+      if (!isTeamMember) {
+        throw new NotFoundException('Event not found');
+      }
     }
     return event;
   }
 
   async update(eventId: string, organizerId: string, dto: UpdateEventDto) {
-    await this.ownedEvent(eventId, organizerId);
+    await this.access.requireEventRole(eventId, organizerId, 'manager');
     return this.prisma.event.update({
       where: { id: eventId },
       data: {
@@ -115,14 +116,11 @@ export class EventsService {
   }
 
   async publish(eventId: string, organizerId: string) {
-    const event = await this.prisma.event.findFirst({
-      where: { id: eventId, organizerId },
-      include: { _count: { select: { ticketTypes: true } } },
+    await this.access.requireEventRole(eventId, organizerId, 'manager');
+    const ticketTypeCount = await this.prisma.ticketType.count({
+      where: { eventId },
     });
-    if (!event) {
-      throw new NotFoundException('Event not found');
-    }
-    if (event._count.ticketTypes === 0) {
+    if (ticketTypeCount === 0) {
       throw new BadRequestException(
         'Add at least one ticket type before publishing',
       );
@@ -139,7 +137,7 @@ export class EventsService {
     organizerId: string,
     dto: CreateEventDto['ticketTypes'][number],
   ) {
-    await this.ownedEvent(eventId, organizerId);
+    await this.access.requireEventRole(eventId, organizerId, 'manager');
     return this.prisma.ticketType.create({
       data: {
         eventId,
@@ -158,7 +156,7 @@ export class EventsService {
     organizerId: string,
     dto: UpdateTicketTypeDto,
   ) {
-    await this.ownedEvent(eventId, organizerId);
+    await this.access.requireEventRole(eventId, organizerId, 'manager');
     return this.prisma.$transaction(async (tx) => {
       const ticketType = await tx.ticketType.findFirst({
         where: { id: ticketTypeId, eventId },

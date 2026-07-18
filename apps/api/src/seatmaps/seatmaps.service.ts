@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AccessService } from '../access/access.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateSeatMapDto } from './seatmaps.controller';
 
@@ -12,17 +13,18 @@ const SECTION_GAP_ROWS = 1;
 
 @Injectable()
 export class SeatmapsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly access: AccessService,
+  ) {}
 
   async create(eventId: string, organizerId: string, dto: CreateSeatMapDto) {
-    const event = await this.prisma.event.findFirst({
-      where: { id: eventId, organizerId },
-      include: { seatMap: { select: { id: true } } },
+    await this.access.requireEventRole(eventId, organizerId, 'manager');
+    const existingSeatMap = await this.prisma.seatMap.findUnique({
+      where: { eventId },
+      select: { id: true },
     });
-    if (!event) {
-      throw new NotFoundException('Event not found');
-    }
-    if (event.seatMap) {
+    if (existingSeatMap) {
       throw new ConflictException('This event already has a seat map');
     }
     const tierNames = dto.sections.map((section) => section.tierName.trim());

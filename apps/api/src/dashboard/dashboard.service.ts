@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { AccessService } from '../access/access.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   Attendee,
@@ -40,21 +41,16 @@ type TicketStamp = { createdAt: Date };
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
-
-  private async ownedEvent(eventId: string, organizerId: string) {
-    const event = await this.prisma.event.findFirst({
-      where: { id: eventId, organizerId },
-    });
-    if (!event) {
-      throw new NotFoundException('Event not found');
-    }
-    return event;
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly access: AccessService,
+  ) {}
 
   async organizerEvents(organizerId: string): Promise<EventCard[]> {
     const events = await this.prisma.event.findMany({
-      where: { organizerId },
+      where: {
+        OR: [{ organizerId }, { team: { some: { userId: organizerId } } }],
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         ticketTypes: { select: { quantity: true } },
@@ -103,7 +99,11 @@ export class DashboardService {
     eventId: string,
     organizerId: string,
   ): Promise<EventDashboard> {
-    const event = await this.ownedEvent(eventId, organizerId);
+    const { event } = await this.access.requireEventRole(
+      eventId,
+      organizerId,
+      'manager',
+    );
     const now = new Date();
 
     const [
@@ -305,7 +305,7 @@ export class DashboardService {
     organizerId: string,
     limit: number,
   ): Promise<Attendee[]> {
-    await this.ownedEvent(eventId, organizerId);
+    await this.access.requireEventRole(eventId, organizerId, 'staff');
     const tickets = await this.prisma.ticket.findMany({
       where: { eventId, status: { not: 'void' } },
       orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
@@ -333,7 +333,7 @@ export class DashboardService {
     organizerId: string,
     limit: number,
   ): Promise<OrderRow[]> {
-    await this.ownedEvent(eventId, organizerId);
+    await this.access.requireEventRole(eventId, organizerId, 'manager');
     const orders = await this.prisma.order.findMany({
       where: { eventId, status: { in: PAID_ORDER_STATUSES } },
       orderBy: { createdAt: 'desc' },
