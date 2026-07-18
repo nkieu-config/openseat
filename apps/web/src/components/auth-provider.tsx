@@ -21,7 +21,7 @@ type AuthContextValue = {
     password: string;
     displayName: string;
   }) => Promise<PublicUser>;
-  loginDemo: (role: "buyer" | "organizer") => Promise<PublicUser>;
+  loginDemo: (role: "buyer" | "organizer" | "staff") => Promise<PublicUser>;
   logout: () => Promise<void>;
 };
 
@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const loginDemo = useCallback(
-    (role: "buyer" | "organizer") =>
+    (role: "buyer" | "organizer" | "staff") =>
       postSession(
         api.POST("/api/demo/login", { body: { role } }),
         "Demo login failed",

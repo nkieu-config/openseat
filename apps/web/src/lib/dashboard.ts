@@ -13,7 +13,19 @@ export type EventCard = {
   capacity: number;
   ticketsSold: number;
   ticketsCheckedIn: number;
-  grossSatang: number;
+  grossSatang: number | null;
+  myRole: string;
+};
+
+export type EventSummary = {
+  id: string;
+  title: string;
+  venueName: string;
+  startsAt: string;
+  status: string;
+  ticketsSold: number;
+  ticketsCheckedIn: number;
+  myRole: string;
 };
 
 export type DashboardTotals = {
@@ -59,6 +71,7 @@ export type EventDashboard = {
   timeline: TimelineBucket[];
   tiers: TierStat[];
   sections: SectionOccupancy[];
+  myRole: string;
 };
 
 export type Attendee = {
@@ -99,7 +112,7 @@ export type EventOrder = {
 
 const EVENT_CARD_FIELDS = `
   id slug title status venueName startsAt isDemo seated
-  capacity ticketsSold ticketsCheckedIn grossSatang
+  capacity ticketsSold ticketsCheckedIn grossSatang myRole
 `;
 
 const ORGANIZER_EVENTS_QUERY = `query { organizerEvents { ${EVENT_CARD_FIELDS} } }`;
@@ -114,6 +127,13 @@ const EVENT_DASHBOARD_QUERY = `query ($eventId: ID!) {
     timeline { day orders ticketsSold grossSatang }
     tiers { id name kind priceSatang quantity remaining sold grossSatang }
     sections { name capacity sold held available }
+    myRole
+  }
+}`;
+
+const EVENT_SUMMARY_QUERY = `query ($eventId: ID!) {
+  eventSummary(eventId: $eventId) {
+    id title venueName startsAt status ticketsSold ticketsCheckedIn myRole
   }
 }`;
 
@@ -138,6 +158,16 @@ export async function fetchEventDashboard(
     { eventId },
   );
   return data.eventDashboard;
+}
+
+export async function fetchEventSummary(
+  eventId: string,
+): Promise<EventSummary> {
+  const data = await gqlRequest<{ eventSummary: EventSummary }>(
+    EVENT_SUMMARY_QUERY,
+    { eventId },
+  );
+  return data.eventSummary;
 }
 
 export async function fetchAttendees(

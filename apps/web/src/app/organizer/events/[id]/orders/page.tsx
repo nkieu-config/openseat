@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { api, apiErrorMessage } from "@/lib/api";
 import { fetchEventOrders, type EventOrder } from "@/lib/dashboard";
 import { formatBaht } from "@/lib/format";
+import { isForbiddenError } from "@/lib/graphql";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -29,9 +30,9 @@ export default function OrdersConsolePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  const [state, setState] = useState<"loading" | "ready" | "missing">(
-    "loading",
-  );
+  const [state, setState] = useState<
+    "loading" | "ready" | "missing" | "forbidden"
+  >("loading");
   const [orders, setOrders] = useState<EventOrder[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [armedOrderId, setArmedOrderId] = useState<string | null>(null);
@@ -55,9 +56,9 @@ export default function OrdersConsolePage() {
     void (async () => {
       try {
         await load();
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setState("missing");
+          setState(isForbiddenError(error) ? "forbidden" : "missing");
         }
       }
     })();
@@ -139,6 +140,24 @@ export default function OrdersConsolePage() {
         <p className="font-mono text-sm text-muted-foreground">
           Loading orders…
         </p>
+      </main>
+    );
+  }
+  if (state === "forbidden") {
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
+        <p className="text-lg font-medium">Your role does not allow this view</p>
+        <p className="text-sm text-muted-foreground">
+          Refunds and the order ledger are open to managers and the event owner.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-2"
+          render={<Link href={`/organizer/events/${eventId}/checkin`} />}
+        >
+          Go to check-in
+        </Button>
       </main>
     );
   }

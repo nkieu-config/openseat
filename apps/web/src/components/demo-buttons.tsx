@@ -5,17 +5,31 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
 
+type DemoRole = "buyer" | "organizer" | "staff";
+
+const DEMO_MESSAGE: Record<DemoRole, string> = {
+  buyer: "Signed in as the demo buyer",
+  organizer: "Signed in as the demo organizer",
+  staff: "Signed in as the demo door staff",
+};
+
+const DEMO_DESTINATION: Record<DemoRole, string> = {
+  buyer: "/events/bangkok-indie-fest",
+  organizer: "/organizer",
+  staff: "/organizer",
+};
+
 export function DemoButtons() {
   const { loginDemo } = useAuth();
   const router = useRouter();
-  const [busy, setBusy] = useState<"buyer" | "organizer" | null>(null);
+  const [busy, setBusy] = useState<DemoRole | null>(null);
 
-  async function enterDemo(role: "buyer" | "organizer") {
+  async function enterDemo(role: DemoRole) {
     setBusy(role);
     try {
       await loginDemo(role);
-      toast.success(role === "buyer" ? "Signed in as the demo buyer" : "Signed in as the demo organizer");
-      router.push(role === "buyer" ? "/events/bangkok-indie-fest" : "/organizer");
+      toast.success(DEMO_MESSAGE[role]);
+      router.push(DEMO_DESTINATION[role]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Demo login failed");
     } finally {
@@ -33,8 +47,8 @@ export function DemoButtons() {
         className="underline underline-offset-4 hover:text-foreground disabled:opacity-50"
       >
         demo buyer
-      </button>{" "}
-      or a{" "}
+      </button>
+      ,{" "}
       <button
         type="button"
         disabled={busy !== null}
@@ -42,6 +56,15 @@ export function DemoButtons() {
         className="underline underline-offset-4 hover:text-foreground disabled:opacity-50"
       >
         demo organizer
+      </button>
+      , or{" "}
+      <button
+        type="button"
+        disabled={busy !== null}
+        onClick={() => void enterDemo("staff")}
+        className="underline underline-offset-4 hover:text-foreground disabled:opacity-50"
+      >
+        demo door staff
       </button>
       .
     </p>

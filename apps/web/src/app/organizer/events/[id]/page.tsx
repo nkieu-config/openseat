@@ -23,8 +23,10 @@ import { api, apiErrorMessage } from "@/lib/api";
 import {
   downloadAttendeesCsv,
   fetchEventDashboard,
+  fetchEventSummary,
   type EventDashboard,
 } from "@/lib/dashboard";
+import { isForbiddenError } from "@/lib/graphql";
 import {
   formatBaht,
   formatDayLabel,
@@ -32,6 +34,7 @@ import {
   formatPercentBp,
   formatPrice,
 } from "@/lib/format";
+import { TeamPanel } from "./team-panel";
 export default function EventConsolePage() {
   const params = useParams<{ id: string }>();
   const eventId = params.id;
@@ -73,10 +76,25 @@ export default function EventConsolePage() {
           Object.fromEntries(dash.tiers.map((tier) => [tier.id, tier.quantity])),
         );
         setState("ready");
-      } catch {
-        if (!cancelled) {
-          setState("missing");
+      } catch (error) {
+        if (cancelled) {
+          return;
         }
+        if (isForbiddenError(error)) {
+          try {
+            const summary = await fetchEventSummary(eventId);
+            if (cancelled) {
+              return;
+            }
+            if (summary.myRole === "staff") {
+              router.replace(`/organizer/events/${eventId}/checkin`);
+              return;
+            }
+          } catch {
+            /* fall through to missing */
+          }
+        }
+        setState("missing");
       }
     })();
     return () => {
@@ -396,6 +414,8 @@ export default function EventConsolePage() {
             ) : null}
           </div>
         </ConsolePanel>
+
+        {event.myRole === "owner" ? <TeamPanel eventId={eventId} /> : null}
       </div>
     </main>
   );

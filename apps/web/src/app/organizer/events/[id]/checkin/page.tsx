@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { checkInTicket, type CheckinResult } from "@/lib/checkin";
-import { fetchEventDashboard } from "@/lib/dashboard";
+import { fetchEventSummary } from "@/lib/dashboard";
 import { cn } from "@/lib/utils";
 
 type DetectedBarcode = { rawValue: string };
@@ -93,13 +93,13 @@ export default function CheckinConsolePage() {
     let cancelled = false;
     void (async () => {
       try {
-        const dash = await fetchEventDashboard(eventId);
+        const summary = await fetchEventSummary(eventId);
         if (cancelled) {
           return;
         }
-        setEventTitle(dash.event.title);
-        setCheckedIn(dash.totals.ticketsCheckedIn);
-        setSold(dash.totals.ticketsSold);
+        setEventTitle(summary.title);
+        setCheckedIn(summary.ticketsCheckedIn);
+        setSold(summary.ticketsSold);
         setState("ready");
       } catch {
         if (!cancelled) {

@@ -99,6 +99,9 @@ export default function OrganizerPage() {
                       {event.seated ? (
                         <Badge variant="secondary">seated</Badge>
                       ) : null}
+                      {event.myRole !== "owner" ? (
+                        <Badge variant="outline">{event.myRole}</Badge>
+                      ) : null}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {formatEventDate(event.startsAt)} · {event.venueName}
@@ -121,7 +124,14 @@ export default function OrganizerPage() {
                   </div>
                 </div>
                 <div className="mt-4 grid grid-cols-3 gap-4">
-                  <TelemetryStat label="Gross" value={formatBaht(event.grossSatang)} />
+                  <TelemetryStat
+                    label="Gross"
+                    value={
+                      event.grossSatang === null
+                        ? "—"
+                        : formatBaht(event.grossSatang)
+                    }
+                  />
                   <TelemetryStat
                     label="Sold"
                     value={event.ticketsSold}
