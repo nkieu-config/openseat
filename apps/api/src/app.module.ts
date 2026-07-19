@@ -6,6 +6,7 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
+import { stdSerializers } from 'pino';
 import { AccessModule } from './access/access.module';
 import { AuthModule } from './auth/auth.module';
 import { CheckinModule } from './checkin/checkin.module';
@@ -40,6 +41,12 @@ import { TelemetryExceptionFilter } from './telemetry/telemetry-exception.filter
             : { target: 'pino-pretty', options: { singleLine: true } },
         autoLogging: {
           ignore: (req) => req.url === '/api/health',
+        },
+        serializers: {
+          req: (request: Parameters<typeof stdSerializers.req>[0]) => {
+            const serialized = stdSerializers.req(request);
+            return { ...serialized, url: serialized.url.split('?')[0] };
+          },
         },
       },
     }),
