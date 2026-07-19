@@ -14,7 +14,7 @@ test('a seat one buyer takes turns held in the other browser, with no reload', a
   await pageA.goto('/events/bangkok-indie-fest');
   await pageB.goto('/events/bangkok-indie-fest');
 
-  const label = await firstAvailableSeat(pageA, 'Main');
+  const label = await firstAvailableSeat(pageA, 'Front');
   await expectSeatStatus(pageB, label, 'available');
 
   await seat(pageA, label).click();
@@ -47,7 +47,7 @@ test('a buyer whose live updates never arrive is refused by the server', async (
   await pageA.goto('/events/bangkok-indie-fest');
   await pageB.goto('/events/bangkok-indie-fest');
 
-  const label = await firstAvailableSeat(pageA, 'Main');
+  const label = await firstAvailableSeat(pageA, 'Front');
   await expectSeatStatus(pageB, label, 'available');
 
   await seat(pageA, label).click();

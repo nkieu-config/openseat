@@ -1,7 +1,7 @@
 import { test as base, expect, type Browser, type BrowserContext } from '@playwright/test';
 import { WEB } from './api';
 
-export type DemoRole = 'buyer' | 'organizer';
+export type DemoRole = 'buyer' | 'organizer' | 'staff';
 
 const ENGLISH_LOCALE = { name: 'os_locale', value: 'en', url: WEB };
 
