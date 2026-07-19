@@ -2,9 +2,11 @@
 
 Open ticketing with real-time reserved seating — create an event, share the link, and let people pick their exact seat. Built to survive on-sale rushes without ever double-selling a seat.
 
+![Two buyers, one seat: a hold appearing live across browsers](docs/media/hero.gif)
+
 **Live**: [openseat-ticket.vercel.app](https://openseat-ticket.vercel.app) · [API health](https://openseat-api.onrender.com/api/health) · [API docs](https://openseat-api.onrender.com/api/docs)
 
-> Status: **M6 — Complete**. The final milestone adds a drag-and-drop **seat-map editor** (hand-built SVG, undo/redo, no library), **EN/TH internationalization** on the public pages, a **light-theme** pass, and an [AWS production architecture doc](docs/aws-production.md). All six milestones are live and documented. Browse the [demo](https://openseat-ticket.vercel.app), design a room from the organizer console, or join the [Midnight Drop](https://openseat-ticket.vercel.app/events/midnight-drop) waiting room and "Simulate a crowd."
+> **Status: complete — eleven milestones, each shipped deployable.** OpenSeat was built in two acts. **Build** (M0–M6) shipped the product: reserved seating under concurrency, async payments over a Go payment simulator, a waiting room for on-sale drops, and a drag-and-drop seat-map editor. **Harden** (M7–M10) turned the demo into a system: OpenTelemetry observability, a browser end-to-end suite on every PR, organizer-triggered refunds, and per-event team RBAC read from the database.
 
 ## Why this project exists
 
@@ -13,9 +15,19 @@ OpenSeat is a portfolio project built like a product. It deliberately takes on t
 - **Inventory correctness under concurrency** — two people tap the same seat; exactly one wins, always
 - **Asynchronous payments** — a mock provider (built in Go) with signed webhooks, retries, and failure injection
 - **Surge traffic** — a waiting room in front of checkout, proven with published k6 load tests
-- **A frontend that pulls its weight** — live seat maps rendered with a hand-built SVG engine, and eventually a drag-and-drop seat-map editor
+- **A frontend that pulls its weight** — live seat maps rendered with a hand-built SVG engine, and a drag-and-drop seat-map editor
+
+<img src="docs/media/seat-map.png" width="600" alt="A public event page with the live seat map: available, held, and sold seats marked on a hand-built SVG floor plan">
 
 Every technology choice has a written rationale with trade-offs — see [docs/adr](docs/adr) and the [design spec](docs/specs/2026-07-15-openseat-design.md).
+
+## Proof, not claims
+
+- **No double-selling, proven two ways** — an API race test puts 50 buyers on one seat and exactly one wins; a [two-browser Playwright journey](tests/e2e/specs/seat-race.spec.ts) shows the loser's seat turn red, not crash.
+- **The surge is load-tested** — the Go waiting room absorbs [~13,000 joins/second at p95 < 20ms with zero errors](docs/load-tests/gate-report.md).
+- **One request, traced across languages** — a browser fetch parents a span inside the Go gate over W3C traceparent ([the trace](docs/observability/trace-web-to-gate.png), [dashboard](docs/observability/dashboard.png)).
+- **The whole demo runs in CI** — 73 API integration tests plus 9 browser journeys on every pull request.
+- **Every decision is written down** — 12 [ADRs](docs/adr) and a spec per milestone, each ending deployable.
 
 ## Architecture at a glance
 
@@ -26,6 +38,14 @@ Every technology choice has a written rationale with trade-offs — see [docs/ad
 | `services/paymock` | Go | Simulated payment vendor: intents, hosted pay page, signed webhooks with retries |
 | `services/gate` | Go (M5) | Waiting-room front door: Redis queue, SSE positions, stateless admission JWTs |
 | Data | PostgreSQL (Prisma 7), Redis | Postgres is the single source of truth (incl. transactional outbox); Redis does jobs, fanout, rate limits, queues |
+
+The web app renders both surfaces of the product. Here is the organizer's **Backstage Console** — live KPIs, a sales sparkline, tier faders, and an occupancy heatmap:
+
+<img src="docs/media/console.png" width="600" alt="The Backstage Console: live sales KPIs, a sales-over-time sparkline, per-tier price faders, and an occupancy heatmap">
+
+...and the drag-and-drop **seat-map editor**, where an organizer lays out sections seat by seat — hand-built SVG, undo/redo, no library:
+
+<img src="docs/media/seatmap-editor.png" width="600" alt="The drag-and-drop seat-map editor with two sections placed on the canvas and the seat inspector open">
 
 Key invariant: `tickets` carries a unique constraint on `(event_id, seat_id)` — even a buggy code path cannot sell one seat twice. See [ADR 0002](docs/adr/0002-db-authoritative-holds.md).
 
@@ -54,6 +74,8 @@ pnpm --filter api test:e2e
 
 ## Roadmap
 
+The first act — *build*:
+
 | Milestone | Ships |
 |---|---|
 | **M0 — Foundation** ✅ | Turborepo monorepo, Docker Compose stack, CI, deploy skeleton, ADRs |
@@ -64,10 +86,32 @@ pnpm --filter api test:e2e
 | **M5 — Waiting room** ✅ | Go **Gate** service (Redis queue, SSE positions, token-bucket admitter), stateless admission JWTs the API verifies itself, k6 load report (~13k joins/s), Simulate Crowd |
 | **M6 — Seat-map editor** ✅ | Drag-and-drop seat-map editor (hand-built SVG, undo/redo), EN/TH i18n on public pages, light-theme audit, [AWS production doc](docs/aws-production.md), [demo video script](docs/demo-script.md) |
 
-Deliberately out of scope: real-money processing, ticket resale, native mobile apps. (Refunds and organizer team RBAC were originally cut here; M9 and M10 revisited them once the product claimed production extensibility. Refunds are now organizer-triggered, reclaiming the seat live and settling on the provider's webhook — [ADR 0011](docs/adr/0011-refunds-reclaim-first.md). An event's owner now staffs a per-event team of managers and staff, gated by a role ladder read from the database so revocation is instant — [ADR 0012](docs/adr/0012-event-team-rbac.md).)
+<img src="docs/media/waiting-room.png" width="600" alt="The drop-mode waiting room showing a buyer's live queue position and the Simulate Crowd control">
 
-## Documentation
+The second act — *harden*:
 
-- [Design spec](docs/specs/2026-07-15-openseat-design.md) — the approved system design
-- [ADRs](docs/adr) — why each significant decision went the way it did
+| Milestone | Ships |
+|---|---|
+| **M7 — Observability** ✅ | OpenTelemetry traces/metrics/logs to Grafana Cloud, domain funnel dashboard, a cross-language browser→Gate trace, 5xx alerting ([ADR 0009](docs/adr/0009-observability-otel-grafana-cloud.md)) |
+| **M8 — Browser end-to-end** ✅ | Playwright journeys driving all four services, located by accessible role, green on every PR ([ADR 0010](docs/adr/0010-browser-tests-locate-by-role.md)) |
+| **M9 — Refunds** ✅ | Organizer-triggered refunds that reclaim the seat live and settle on the provider's webhook ([ADR 0011](docs/adr/0011-refunds-reclaim-first.md)) |
+| **M10 — Team RBAC** ✅ | Per-event owner/manager/staff, a role ladder read from the database so revocation is instant ([ADR 0012](docs/adr/0012-event-team-rbac.md)) |
+
+<img src="docs/media/team-panel.png" width="600" alt="The event team panel: a linked staff member and a pending manager invitation awaiting registration">
+
+Deliberately out of scope: real-money processing, ticket resale, native mobile apps.
+
+## Walk the demo in 2 minutes
+
+No sign-up — the landing page has one-tap demo entry.
+
+1. **As a buyer** — open the demo event, pick a seat on the live map, and pay on the PayMock page; your QR ticket lands on the order page.
+2. **As the organizer** — open the Backstage Console for live sales, occupancy, and the door scanner; refund a seat and watch it return to sale.
+3. **As door staff** — the same console, walled to the door: check-ins only, no revenue, no refunds.
+
+## Where to look next
+
+- [docs/tour.md](docs/tour.md) — read this repo well in ten minutes
+- [Design spec](docs/specs/2026-07-15-openseat-design.md) and per-milestone specs in [docs/specs](docs/specs)
+- [ADRs](docs/adr) — why each decision went the way it did
 - [CONTEXT.md](CONTEXT.md) — the project's ubiquitous language
