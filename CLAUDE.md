@@ -2,16 +2,17 @@
 
 ## Project
 
-OpenSeat — a ticketing platform with real-time reserved seating. Portfolio project built to production standards. The approved design lives in `docs/specs/2026-07-15-openseat-design.md`; significant decisions are ADRs under `docs/adr/`; domain vocabulary is `CONTEXT.md`. Work proceeds in milestones M0–M6 (see README roadmap) and every milestone must end deployable.
+OpenSeat — a ticketing platform with real-time reserved seating. Portfolio project built to production standards. The approved design lives in `docs/specs/2026-07-15-openseat-design.md`; significant decisions are ADRs under `docs/adr/`; domain vocabulary is `CONTEXT.md`. Milestones M0–M11 all shipped (see README roadmap): M0–M6 built the product, M7–M10 hardened it (observability, browser e2e, refunds, team RBAC), M11 is the presentation pack. Every milestone ends deployable.
 
 ## Structure
 
 Turborepo + pnpm workspaces:
 
 - `apps/web` — Next.js App Router, Tailwind v4, shadcn/ui (dark-first)
-- `apps/api` — NestJS modular monolith: REST + OpenAPI at `/api`, Swagger at `/api/docs`, Socket.IO realtime at namespace `/rt` (Redis adapter when `REDIS_URL` is set), BullMQ hold sweeper, Prisma 7 (client generated to `apps/api/src/generated/prisma`, gitignored). Seat holds are DB-authoritative; the browser talks to websockets directly at the API origin (`NEXT_PUBLIC_API_ORIGIN`), not through the Next.js proxy
-- `services/paymock` — Go payment simulator (intents, hosted pay page, HMAC webhooks sent twice on purpose); run locally with `go run ./services/paymock`, test with `go test ./services/paymock/...`. `services/gate` arrives in M5
-- `packages/contracts` — shared types/schemas; `packages/config` — shared tsconfig
+- `apps/api` — NestJS modular monolith: REST + OpenAPI at `/api`, Swagger at `/api/docs`, read-only GraphQL for the organizer console at `/api/graphql` (ADR 0006), Socket.IO realtime at namespace `/rt` (Redis adapter when `REDIS_URL` is set), BullMQ hold sweeper, OpenTelemetry traces/metrics/logs (ADR 0009), per-event role checks through `access/` (ADR 0012), Prisma 7 (client generated to `apps/api/src/generated/prisma`, gitignored). Seat holds are DB-authoritative; the browser talks to websockets directly at the API origin (`NEXT_PUBLIC_API_ORIGIN`), not through the Next.js proxy
+- `services/paymock` — Go payment simulator (intents, hosted pay page, refunds, HMAC webhooks sent twice on purpose); run locally with `go run ./services/paymock`, test with `go test ./services/paymock/...`
+- `services/gate` — Go waiting room (Redis queue, SSE positions, stateless admission JWTs), shipped in M5
+- `packages/contracts` — the OpenAPI spec plus its generated TypeScript client (types only, no runtime schemas); `packages/config` — shared tsconfig
 - `tests/e2e` — Playwright browser journeys driving all four services at once; locates by accessible role and name, never `data-testid` (ADR 0010)
 - `infra/` — docker-compose (Postgres 16, Redis 7, Mailpit), deploy config
 
@@ -26,6 +27,7 @@ pnpm e2e                                   # browser journeys (needs compose sta
 pnpm --filter api db:migrate               # prisma migrate dev
 pnpm --filter api db:seed                  # reseed the demo event + demo users
 pnpm --filter api openapi:dump             # regenerate packages/contracts/openapi.json after API changes
+pnpm capture                               # refresh docs/media (hero GIF + screenshots); needs free ports like pnpm e2e
 ```
 
 After changing any controller or DTO, run `openapi:dump` then `pnpm --filter @openseat/contracts build` so the web app's typed client stays in sync. The web app talks to the API through a same-origin Next.js rewrite (`/api/*`); see ADR 0004.
