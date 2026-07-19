@@ -7,6 +7,14 @@ import { useAuth } from "@/components/auth-provider";
 
 type DemoRole = "buyer" | "organizer" | "staff";
 
+export type DemoButtonLabels = {
+  noSignup: string;
+  buyer: string;
+  organizer: string;
+  or: string;
+  staff: string;
+};
+
 const DEMO_MESSAGE: Record<DemoRole, string> = {
   buyer: "Signed in as the demo buyer",
   organizer: "Signed in as the demo organizer",
@@ -19,7 +27,7 @@ const DEMO_DESTINATION: Record<DemoRole, string> = {
   staff: "/organizer",
 };
 
-export function DemoButtons() {
+export function DemoButtons({ labels }: { labels: DemoButtonLabels }) {
   const { loginDemo } = useAuth();
   const router = useRouter();
   const [busy, setBusy] = useState<DemoRole | null>(null);
@@ -39,14 +47,14 @@ export function DemoButtons() {
 
   return (
     <p className="text-sm text-muted-foreground">
-      No sign-up needed — jump in as a{" "}
+      {labels.noSignup}{" "}
       <button
         type="button"
         disabled={busy !== null}
         onClick={() => void enterDemo("buyer")}
         className="underline underline-offset-4 hover:text-foreground disabled:opacity-50"
       >
-        demo buyer
+        {labels.buyer}
       </button>
       ,{" "}
       <button
@@ -55,16 +63,16 @@ export function DemoButtons() {
         onClick={() => void enterDemo("organizer")}
         className="underline underline-offset-4 hover:text-foreground disabled:opacity-50"
       >
-        demo organizer
+        {labels.organizer}
       </button>
-      , or{" "}
+      , {labels.or}{" "}
       <button
         type="button"
         disabled={busy !== null}
         onClick={() => void enterDemo("staff")}
         className="underline underline-offset-4 hover:text-foreground disabled:opacity-50"
       >
-        demo door staff
+        {labels.staff}
       </button>
       .
     </p>

@@ -24,6 +24,7 @@ export const en = {
     demoBuyer: "demo buyer",
     or: "or a",
     demoOrganizer: "demo organizer",
+    demoStaff: "demo door staff",
   },
   auth: {
     loginTitle: "Welcome back",
@@ -81,6 +82,7 @@ export const th: Dictionary = {
     demoBuyer: "ผู้ซื้อตัวอย่าง",
     or: "หรือ",
     demoOrganizer: "ผู้จัดตัวอย่าง",
+    demoStaff: "พนักงานหน้างานตัวอย่าง",
   },
   auth: {
     loginTitle: "ยินดีต้อนรับกลับ",

@@ -81,7 +81,15 @@ export default async function Home() {
               {dict.landing.createOwn}
             </Button>
           </div>
-          <DemoButtons />
+          <DemoButtons
+            labels={{
+              noSignup: dict.landing.noSignup,
+              buyer: dict.landing.demoBuyer,
+              organizer: dict.landing.demoOrganizer,
+              or: dict.landing.or,
+              staff: dict.landing.demoStaff,
+            }}
+          />
         </div>
         <SeatMapTeaser />
       </section>
