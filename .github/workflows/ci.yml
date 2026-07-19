@@ -31,6 +31,8 @@ jobs:
           restore-keys: |
             turbo-${{ runner.os }}-
       - run: pnpm turbo run lint typecheck build test --cache-dir=.turbo
+      - name: Verify the OpenAPI contract is in sync
+        run: pnpm --filter api openapi:dump && git diff --exit-code packages/contracts/openapi.json
 
   paymock:
     runs-on: ubuntu-latest
