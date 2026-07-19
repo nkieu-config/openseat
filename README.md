@@ -64,7 +64,7 @@ pnpm --filter api test:e2e
 | **M5 — Waiting room** ✅ | Go **Gate** service (Redis queue, SSE positions, token-bucket admitter), stateless admission JWTs the API verifies itself, k6 load report (~13k joins/s), Simulate Crowd |
 | **M6 — Seat-map editor** ✅ | Drag-and-drop seat-map editor (hand-built SVG, undo/redo), EN/TH i18n on public pages, light-theme audit, [AWS production doc](docs/aws-production.md), [demo video script](docs/demo-script.md) |
 
-Deliberately out of scope: real-money processing, ticket resale, organizer team RBAC, native mobile apps. (Refunds were originally cut here too; M9 revisited them once the product claimed production extensibility — organizers now refund any subset of a paid order, reclaiming the seat live and settling the money on the provider's webhook. The reversal and its reclaim-first design are recorded in [ADR 0011](docs/adr/0011-refunds-reclaim-first.md).)
+Deliberately out of scope: real-money processing, ticket resale, native mobile apps. (Refunds and organizer team RBAC were originally cut here; M9 and M10 revisited them once the product claimed production extensibility. Refunds are now organizer-triggered, reclaiming the seat live and settling on the provider's webhook — [ADR 0011](docs/adr/0011-refunds-reclaim-first.md). An event's owner now staffs a per-event team of managers and staff, gated by a role ladder read from the database so revocation is instant — [ADR 0012](docs/adr/0012-event-team-rbac.md).)
 
 ## Documentation
 

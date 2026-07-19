@@ -1,6 +1,6 @@
 # M10 — Event team RBAC ("Who may pull this lever")
 
-Status: Approved (2026-07-19)
+Status: Accepted (2026-07-19) — implemented in M10; the role ladder, the data-not-claims choice, and the deviations are recorded in ADR 0012.
 
 ## Goal
 

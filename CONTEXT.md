@@ -4,7 +4,7 @@ The vocabulary below is the project's source of truth for naming things — in c
 
 ## Selling side
 
-- **Organizer** — a user who creates and runs events. Any user can become one by creating an event.
+- **Organizer** — loosely, anyone who runs an event from the console. Precisely, an event's **owner** is the user who created it; the owner may also add **team members** (managers and staff) who run it alongside them. "Organizer" the role is the owner; "organizer" the surface is the console the whole team shares.
 - **Event** — a dated occasion with a venue name, a seat map and/or GA ticket types, and a sales window. Has `sale_opens_at`; may run in drop mode.
 - **Seat map** — the versioned layout (sections, rows, seats) attached to an event. Built from a template or the drag-and-drop editor (M6), then materialized into individual seats.
 - **Section / Row / Seat** — the physical hierarchy. A seat is the unit of inventory for reserved seating.
@@ -25,6 +25,9 @@ The vocabulary below is the project's source of truth for naming things — in c
 - **Console / Dashboard** — the organizer's read-only control surface for one event (the "Backstage Console" UI): live totals, sales timeline, tier and occupancy breakdowns, attendees. Reads run over the GraphQL layer (ADR 0006).
 - **Occupancy** — the sold / held / available state of a seat map, aggregated per section and drawn as a heatmap (the "occupancy rig").
 - **Sell-through** — issued tickets as a share of capacity.
+- **Team** — the people who may run one event: its owner plus any members the owner adds. Per event, not per organization.
+- **Member** — a person on an event's team, keyed by lowercase email. Links to a user account lazily — a member added before they register sits *pending* until that email signs up. The owner is never a member row (ownership derives from the event).
+- **Role** — a team member's rank on the ladder `owner > manager > staff`: staff scans tickets and reads the door list; manager runs the event including refunds; owner also manages the team. Resolved from the database per request, never from a token, so removing someone takes effect immediately (ADR 0012).
 
 ## Surge machinery
 
