@@ -10,7 +10,7 @@ import { stdSerializers } from 'pino';
 import { AccessModule } from './access/access.module';
 import { AuthModule } from './auth/auth.module';
 import { CheckinModule } from './checkin/checkin.module';
-import { GqlThrottlerGuard } from './common/gql-throttler.guard';
+import { GqlThrottlerGuard } from './graphql/gql-throttler.guard';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DemoModule } from './demo/demo.module';
 import { EventsModule } from './events/events.module';
