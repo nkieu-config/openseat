@@ -22,6 +22,15 @@ export type RefundNoticeEmail = {
   guestToken: string;
 };
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -48,7 +57,7 @@ export class MailService {
   async sendOrderConfirmation(email: OrderConfirmationEmail): Promise<void> {
     const orderUrl = `${this.appOrigin}/orders/${email.orderId}?token=${email.guestToken}`;
     const ticketList = email.ticketNames
-      .map((name) => `<li>${name}</li>`)
+      .map((name) => `<li>${escapeHtml(name)}</li>`)
       .join('');
     try {
       await this.transporter.sendMail({
@@ -56,9 +65,9 @@ export class MailService {
         to: email.to,
         subject: `Your tickets for ${email.eventTitle}`,
         html: [
-          `<p>Hi ${email.buyerName},</p>`,
-          `<p>You're going to <strong>${email.eventTitle}</strong>!</p>`,
-          `<p>${email.eventVenue} · ${email.eventStartsAt.toUTCString()}</p>`,
+          `<p>Hi ${escapeHtml(email.buyerName)},</p>`,
+          `<p>You're going to <strong>${escapeHtml(email.eventTitle)}</strong>!</p>`,
+          `<p>${escapeHtml(email.eventVenue)} · ${email.eventStartsAt.toUTCString()}</p>`,
           `<ul>${ticketList}</ul>`,
           `<p><a href="${orderUrl}">View your tickets and QR codes</a></p>`,
           `<p>Show the QR code at the door to check in.</p>`,
@@ -68,6 +77,7 @@ export class MailService {
       this.logger.warn(
         `Failed to send order confirmation for order ${email.orderId}: ${String(error)}`,
       );
+      throw error;
     }
   }
 
@@ -83,8 +93,8 @@ export class MailService {
         to: email.to,
         subject: `Your refund for ${email.eventTitle}`,
         html: [
-          `<p>Hi ${email.buyerName},</p>`,
-          `<p>We've refunded <strong>${amount}</strong> for <strong>${email.eventTitle}</strong>.</p>`,
+          `<p>Hi ${escapeHtml(email.buyerName)},</p>`,
+          `<p>We've refunded <strong>${amount}</strong> for <strong>${escapeHtml(email.eventTitle)}</strong>.</p>`,
           `<p>The refunded tickets are no longer valid for entry.</p>`,
           `<p><a href="${orderUrl}">View your order</a></p>`,
         ].join('\n'),
@@ -93,6 +103,7 @@ export class MailService {
       this.logger.warn(
         `Failed to send refund notice for order ${email.orderId}: ${String(error)}`,
       );
+      throw error;
     }
   }
 }
