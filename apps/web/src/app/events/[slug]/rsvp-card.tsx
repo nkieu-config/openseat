@@ -88,7 +88,9 @@ export function RsvpCard({ event }: { event: EventDetail }) {
     <Card className="sticky top-20">
       <CardHeader>
         <CardTitle className="text-lg">Get tickets</CardTitle>
-        <CardDescription>Free while payments are under construction.</CardDescription>
+        {event.ticketTypes.every((type) => type.priceSatang === 0) ? (
+          <CardDescription>Free while payments are under construction.</CardDescription>
+        ) : null}
       </CardHeader>
       <CardContent>
         <form onSubmit={(formEvent) => void claim(formEvent)} className="flex flex-col gap-4">
