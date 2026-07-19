@@ -104,16 +104,23 @@ export default function EventConsolePage() {
 
   async function publish() {
     setBusy(true);
-    const { error, response } = await api.POST("/api/events/{id}/publish", {
-      params: { path: { id: eventId } },
-    });
-    setBusy(false);
-    if (!response.ok) {
-      toast.error(apiErrorMessage(error, "Could not publish"));
-      return;
+    try {
+      const { error, response } = await api.POST("/api/events/{id}/publish", {
+        params: { path: { id: eventId } },
+      });
+      if (!response.ok) {
+        toast.error(apiErrorMessage(error, "Could not publish"));
+        return;
+      }
+      toast.success("Event published — share the public link");
+      setReloadKey((key) => key + 1);
+    } catch (failure) {
+      toast.error(
+        failure instanceof Error ? failure.message : "Could not publish",
+      );
+    } finally {
+      setBusy(false);
     }
-    toast.success("Event published — share the public link");
-    setReloadKey((key) => key + 1);
   }
 
   async function saveQuantity(ticketTypeId: string) {
