@@ -8,9 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -35,11 +38,17 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
-func atoiOr(value string, fallback int) int {
-	if parsed, err := strconv.Atoi(value); err == nil {
-		return parsed
+func positiveOr(key string, fallback int) int {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return fallback
 	}
-	return fallback
+	parsed, err := strconv.Atoi(raw)
+	if err != nil || parsed <= 0 {
+		log.Printf("%s=%q is not a positive integer; using %d", key, raw, fallback)
+		return fallback
+	}
+	return parsed
 }
 
 func loadConfig() config {
@@ -47,9 +56,9 @@ func loadConfig() config {
 		port:          envOr("PORT", "4200"),
 		redisURL:      envOr("REDIS_URL", "redis://localhost:6379"),
 		secret:        envOr("GATE_ADMISSION_SECRET", "gate-dev-admission-secret"),
-		admissionTTL:  time.Duration(atoiOr(envOr("ADMISSION_TTL_SECONDS", ""), 300)) * time.Second,
-		admitBatch:    atoiOr(envOr("ADMIT_BATCH", ""), 3),
-		admitInterval: time.Duration(atoiOr(envOr("ADMIT_INTERVAL_MS", ""), 2000)) * time.Millisecond,
+		admissionTTL:  time.Duration(positiveOr("ADMISSION_TTL_SECONDS", 300)) * time.Second,
+		admitBatch:    positiveOr("ADMIT_BATCH", 3),
+		admitInterval: time.Duration(positiveOr("ADMIT_INTERVAL_MS", 2000)) * time.Millisecond,
 		admitEnabled:  envOr("ADMIT_ENABLED", "true") == "true",
 		webOrigin:     envOr("WEB_ORIGIN", "*"),
 	}
@@ -65,6 +74,11 @@ func mustJSON(value any) string {
 	encoded, _ := json.Marshal(value)
 	return string(encoded)
 }
+
+const (
+	maxRequestBytes = 64 << 10
+	shutdownGrace   = 10 * time.Second
+)
 
 type server struct {
 	cfg     config
@@ -91,6 +105,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBytes)
 	s.handler.ServeHTTP(w, r)
 }
 
@@ -200,6 +215,8 @@ func (s *server) handleStream(w http.ResponseWriter, r *http.Request) {
 			return false
 		}
 		if err != nil {
+			fmt.Fprint(w, ": keep-alive\n\n")
+			flusher.Flush()
 			return true
 		}
 		fmt.Fprintf(w, "event: position\ndata: %s\n\n", mustJSON(map[string]any{
@@ -236,14 +253,44 @@ func main() {
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
 		log.Fatalf("redis unreachable: %v", err)
 	}
+
+	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	shutdownTelemetry := setupTelemetry(context.Background())
-	defer func() { _ = shutdownTelemetry(context.Background()) }()
 	queue := newQueue(rdb, cfg.admissionTTL)
 	registerQueueDepthGauge(queue)
 	if cfg.admitEnabled {
-		go newAdmitter(queue, cfg.admitBatch, cfg.admitInterval, log.Default()).Run(context.Background())
+		go newAdmitter(queue, cfg.admitBatch, cfg.admitInterval, log.Default()).Run(rootCtx)
 	}
-	srv := newServer(cfg, queue)
-	log.Printf("gate listening on :%s (admit %d every %s)", cfg.port, cfg.admitBatch, cfg.admitInterval)
-	log.Fatal(http.ListenAndServe(":"+cfg.port, srv))
+
+	srv := &http.Server{
+		Addr:              ":" + cfg.port,
+		Handler:           newServer(cfg, queue),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+		BaseContext:       func(net.Listener) context.Context { return rootCtx },
+	}
+	go func() {
+		log.Printf("gate listening on :%s (admit %d every %s)", cfg.port, cfg.admitBatch, cfg.admitInterval)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("gate server error: %v", err)
+			stop()
+		}
+	}()
+
+	<-rootCtx.Done()
+	stop()
+	log.Print("gate shutting down")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("gate shutdown: %v", err)
+	}
+	if err := shutdownTelemetry(shutdownCtx); err != nil {
+		log.Printf("telemetry flush: %v", err)
+	}
+	if err := rdb.Close(); err != nil {
+		log.Printf("redis close: %v", err)
+	}
 }
