@@ -1,26 +1,20 @@
-"use client";
+'use client';
 
-import type { OrderDetail, SeatInfo, SeatMapData, SeatsChangedMessage } from "@openseat/contracts";
-import { Minus, Plus, RotateCcw } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
-import { useAuth } from "@/components/auth-provider";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
-import { api, apiErrorMessage } from "@/lib/api";
-import { getHoldKey } from "@/lib/hold-key";
-import { createEventSocket } from "@/lib/realtime";
+import type { OrderDetail, SeatInfo, SeatMapData, SeatsChangedMessage } from '@openseat/contracts';
+import { Minus, Plus, RotateCcw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { useAuth } from '@/components/auth-provider';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { api, apiErrorMessage } from '@/lib/api';
+import { getHoldKey } from '@/lib/hold-key';
+import { createEventSocket } from '@/lib/realtime';
 
 const CELL = 34;
 const GAP = 8;
@@ -28,10 +22,10 @@ const PAD = 44;
 const STEP = CELL + GAP;
 
 const seatFill: Record<string, string> = {
-  available: "fill-seat-available",
-  held: "fill-seat-held",
-  sold: "fill-seat-sold",
-  mine: "fill-seat-selected",
+  available: 'fill-seat-available',
+  held: 'fill-seat-held',
+  sold: 'fill-seat-sold',
+  mine: 'fill-seat-selected',
 };
 
 function seatLabel(seat: SeatInfo): string {
@@ -52,8 +46,7 @@ function HoldCountdown({ expiresAt }: { expiresAt: number | null }) {
   }
   return (
     <p className="font-mono text-sm tabular-nums text-muted-foreground">
-      Held for{" "}
-      <span className="text-primary">{formatCountdown(expiresAt - now)}</span>
+      Held for <span className="text-primary">{formatCountdown(expiresAt - now)}</span>
     </p>
   );
 }
@@ -62,7 +55,7 @@ function formatCountdown(msLeft: number): string {
   const totalSeconds = Math.max(0, Math.floor(msLeft / 1000));
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
 export function SeatPicker({ eventId }: { eventId: string }) {
@@ -72,8 +65,8 @@ export function SeatPicker({ eventId }: { eventId: string }) {
   const [failed, setFailed] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [buyerName, setBuyerName] = useState("");
-  const [buyerEmail, setBuyerEmail] = useState("");
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerEmail, setBuyerEmail] = useState('');
   const [claiming, setClaiming] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const holdKey = useMemo(() => getHoldKey(), []);
@@ -87,8 +80,8 @@ export function SeatPicker({ eventId }: { eventId: string }) {
   useEffect(() => {
     let cancelled = false;
     void api
-      .GET("/api/events/{eventId}/seat-map", {
-        params: { path: { eventId }, header: { "x-hold-key": holdKey } },
+      .GET('/api/events/{eventId}/seat-map', {
+        params: { path: { eventId }, header: { 'x-hold-key': holdKey } },
       })
       .then(({ data, response }) => {
         if (cancelled) {
@@ -107,7 +100,7 @@ export function SeatPicker({ eventId }: { eventId: string }) {
 
   useEffect(() => {
     const socket = createEventSocket(eventId);
-    socket.on("seats", (message: SeatsChangedMessage) => {
+    socket.on('seats', (message: SeatsChangedMessage) => {
       setMap((current) => {
         if (!current) {
           return current;
@@ -119,13 +112,13 @@ export function SeatPicker({ eventId }: { eventId: string }) {
           ...current,
           seats: current.seats.map((seat) => {
             if (sold.has(seat.id)) {
-              return { ...seat, status: "sold", mine: false };
+              return { ...seat, status: 'sold', mine: false };
             }
             if (released.has(seat.id)) {
-              return { ...seat, status: "available", mine: false, expiresAt: undefined };
+              return { ...seat, status: 'available', mine: false, expiresAt: undefined };
             }
             if (held.has(seat.id) && !seat.mine) {
-              return { ...seat, status: "held" };
+              return { ...seat, status: 'held' };
             }
             return seat;
           }),
@@ -133,10 +126,11 @@ export function SeatPicker({ eventId }: { eventId: string }) {
       });
     });
     return () => {
-      socket.emit("leave", { eventId });
+      socket.emit('leave', { eventId });
       socket.disconnect();
     };
   }, [eventId]);
+
 
   const mySeats = useMemo(() => (map?.seats ?? []).filter((seat) => seat.mine), [map]);
   const earliestExpiry = useMemo(
@@ -163,60 +157,114 @@ export function SeatPicker({ eventId }: { eventId: string }) {
       const currentNow = Date.now();
       if (earliestExpiryRef.current !== null && earliestExpiryRef.current <= currentNow) {
         earliestExpiryRef.current = null;
-        toast.error("Your seat holds expired — pick them again");
+        toast.error('Your seat holds expired — pick them again');
         refresh();
       }
     }, 1000);
     return () => clearInterval(interval);
   }, [mySeats.length, refresh]);
 
-  function applySeat(seatId: string, patch: Partial<SeatInfo>) {
+  const applySeat = useCallback((seatId: string, patch: Partial<SeatInfo>) => {
     setMap((current) =>
       current
         ? {
             ...current,
-            seats: current.seats.map((seat) =>
-              seat.id === seatId ? { ...seat, ...patch } : seat,
-            ),
+            seats: current.seats.map((seat) => (seat.id === seatId ? { ...seat, ...patch } : seat)),
           }
         : current,
     );
-  }
+  }, []);
 
-  async function toggleSeat(seat: SeatInfo) {
-    if (suppressClick.current || seat.status === "sold" || claiming) {
-      return;
-    }
-    if (seat.mine) {
-      applySeat(seat.id, { status: "available", mine: false, expiresAt: undefined });
-      const { response } = await api.DELETE("/api/events/{eventId}/holds/{seatId}", {
-        params: { path: { eventId, seatId: seat.id }, header: { "x-hold-key": holdKey } },
-      });
-      if (!response.ok) {
-        refresh();
+  const toggleSeat = useCallback(
+    async (seat: SeatInfo) => {
+      if (suppressClick.current || seat.status === 'sold' || claiming) {
+        return;
       }
-      return;
-    }
-    if (seat.status === "held") {
-      toast.error(`${seatLabel(seat)} is held by someone else`);
-      return;
-    }
-    applySeat(seat.id, { status: "held", mine: true });
-    const { data, error, response } = await api.POST("/api/events/{eventId}/holds", {
-      params: { path: { eventId }, header: { "x-hold-key": holdKey } },
-      body: { seatId: seat.id },
-    });
-    if (!response.ok || data === undefined) {
-      applySeat(seat.id, {
-        status: response.status === 409 ? "held" : "available",
-        mine: false,
+      if (seat.mine) {
+        applySeat(seat.id, { status: 'available', mine: false, expiresAt: undefined });
+        const { response } = await api.DELETE('/api/events/{eventId}/holds/{seatId}', {
+          params: { path: { eventId, seatId: seat.id }, header: { 'x-hold-key': holdKey } },
+        });
+        if (!response.ok) {
+          refresh();
+        }
+        return;
+      }
+      if (seat.status === 'held') {
+        toast.error(`${seatLabel(seat)} is held by someone else`);
+        return;
+      }
+      applySeat(seat.id, { status: 'held', mine: true });
+      const { data, error, response } = await api.POST('/api/events/{eventId}/holds', {
+        params: { path: { eventId }, header: { 'x-hold-key': holdKey } },
+        body: { seatId: seat.id },
       });
-      toast.error(apiErrorMessage(error, `Could not hold ${seatLabel(seat)}`));
-      return;
-    }
-    const hold = data as unknown as { seatId: string; expiresAt: string };
-    applySeat(seat.id, { status: "held", mine: true, expiresAt: hold.expiresAt });
-  }
+      if (!response.ok || data === undefined) {
+        applySeat(seat.id, {
+          status: response.status === 409 ? 'held' : 'available',
+          mine: false,
+        });
+        toast.error(apiErrorMessage(error, `Could not hold ${seatLabel(seat)}`));
+        return;
+      }
+      const hold = data as unknown as { seatId: string; expiresAt: string };
+      applySeat(seat.id, { status: 'held', mine: true, expiresAt: hold.expiresAt });
+    },
+    [applySeat, claiming, eventId, holdKey, refresh],
+  );
+
+  const seatNodes = useMemo(
+    () =>
+      (map?.seats ?? []).map((seat) => {
+        const x = PAD + seat.x * STEP;
+        const y = 36 + PAD + seat.y * STEP;
+        const fill = seat.mine ? seatFill.mine : seatFill[seat.status];
+        return (
+          <g key={seat.id}>
+            {seat.number === 1 ? (
+              <text
+                x={x - 12}
+                y={y + CELL / 2}
+                textAnchor="end"
+                dominantBaseline="central"
+                className="fill-muted-foreground font-mono"
+                fontSize="10"
+              >
+                {seat.rowLabel}
+              </text>
+            ) : null}
+            <rect
+              x={x}
+              y={y}
+              width={CELL}
+              height={CELL}
+              rx="8"
+              className={`${fill} outline-none transition-opacity ${
+                seat.status === 'sold'
+                  ? 'cursor-not-allowed stroke-foreground/40 [stroke-width:2px]'
+                  : 'cursor-pointer hover:opacity-80 focus-visible:stroke-ring focus-visible:[stroke-width:2.5px]'
+              }`}
+              style={
+                seat.mine ? { filter: 'drop-shadow(0 0 7px var(--seat-selected))' } : undefined
+              }
+              role="button"
+              tabIndex={seat.status === 'sold' ? -1 : 0}
+              aria-label={`${seatLabel(seat)} — ${seat.mine ? 'yours' : seat.status}`}
+              onClick={() => void toggleSeat(seat)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  void toggleSeat(seat);
+                }
+              }}
+            >
+              <title>{`${seatLabel(seat)} — ${seat.mine ? 'yours' : seat.status}`}</title>
+            </rect>
+          </g>
+        );
+      }),
+    [map, toggleSeat],
+  );
 
   async function claim(formEvent: React.FormEvent) {
     formEvent.preventDefault();
@@ -225,12 +273,12 @@ export function SeatPicker({ eventId }: { eventId: string }) {
     }
     setClaiming(true);
     try {
-      const { data, error, response } = await api.POST("/api/events/{eventId}/orders", {
+      const { data, error, response } = await api.POST('/api/events/{eventId}/orders', {
         params: {
           path: { eventId },
           header: {
-            "idempotency-key": idempotencyKey.current,
-            "x-hold-key": holdKey,
+            'idempotency-key': idempotencyKey.current,
+            'x-hold-key': holdKey,
           },
         },
         body: {
@@ -241,18 +289,18 @@ export function SeatPicker({ eventId }: { eventId: string }) {
       });
       if (!response.ok || data === undefined) {
         idempotencyKey.current = crypto.randomUUID();
-        toast.error(apiErrorMessage(error, "Could not claim these seats"));
+        toast.error(apiErrorMessage(error, 'Could not claim these seats'));
         if (response.status === 409) {
           refresh();
         }
         return;
       }
       const order = data as unknown as OrderDetail;
-      if (order.status === "awaiting_payment" && order.payment?.checkoutUrl) {
+      if (order.status === 'awaiting_payment' && order.payment?.checkoutUrl) {
         window.location.assign(order.payment.checkoutUrl);
         return;
       }
-      toast.success("Seats are yours — check your email");
+      toast.success('Seats are yours — check your email');
       router.push(`/orders/${order.id}?token=${order.guestToken}`);
     } finally {
       setClaiming(false);
@@ -381,66 +429,17 @@ export function SeatPicker({ eventId }: { eventId: string }) {
                   {section.name.toUpperCase()}
                 </text>
               ))}
-              {map.seats.map((seat) => {
-                const x = PAD + seat.x * STEP;
-                const y = 36 + PAD + seat.y * STEP;
-                const fill = seat.mine ? seatFill.mine : seatFill[seat.status];
-                return (
-                  <g key={seat.id}>
-                    {seat.number === 1 ? (
-                      <text
-                        x={x - 12}
-                        y={y + CELL / 2}
-                        textAnchor="end"
-                        dominantBaseline="central"
-                        className="fill-muted-foreground font-mono"
-                        fontSize="10"
-                      >
-                        {seat.rowLabel}
-                      </text>
-                    ) : null}
-                    <rect
-                      x={x}
-                      y={y}
-                      width={CELL}
-                      height={CELL}
-                      rx="8"
-                      className={`${fill} outline-none transition-opacity ${
-                        seat.status === "sold"
-                          ? "cursor-not-allowed stroke-foreground/40 [stroke-width:2px]"
-                          : "cursor-pointer hover:opacity-80 focus-visible:stroke-ring focus-visible:[stroke-width:2.5px]"
-                      }`}
-                      style={
-                        seat.mine
-                          ? { filter: "drop-shadow(0 0 7px var(--seat-selected))" }
-                          : undefined
-                      }
-                      role="button"
-                      tabIndex={seat.status === "sold" ? -1 : 0}
-                      aria-label={`${seatLabel(seat)} — ${seat.mine ? "yours" : seat.status}`}
-                      onClick={() => void toggleSeat(seat)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          void toggleSeat(seat);
-                        }
-                      }}
-                    >
-                      <title>{`${seatLabel(seat)} — ${seat.mine ? "yours" : seat.status}`}</title>
-                    </rect>
-                  </g>
-                );
-              })}
+              {seatNodes}
             </g>
           </svg>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
           {(
             [
-              ["available", "Available"],
-              ["held", "Held by someone"],
-              ["mine", "Yours"],
-              ["sold", "Sold"],
+              ['available', 'Available'],
+              ['held', 'Held by someone'],
+              ['mine', 'Yours'],
+              ['sold', 'Sold'],
             ] as const
           ).map(([state, label]) => (
             <span key={state} className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -456,9 +455,7 @@ export function SeatPicker({ eventId }: { eventId: string }) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               {mySeats.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Tap an available seat to hold it.
-                </p>
+                <p className="text-sm text-muted-foreground">Tap an available seat to hold it.</p>
               ) : (
                 mySeats.map((seat) => (
                   <span
@@ -498,10 +495,10 @@ export function SeatPicker({ eventId }: { eventId: string }) {
           ) : null}
           <Button type="submit" disabled={mySeats.length === 0 || claiming} className="sm:self-end">
             {claiming
-              ? "Claiming…"
+              ? 'Claiming…'
               : mySeats.length === 0
-                ? "Pick seats to continue"
-                : `Claim ${mySeats.length} seat${mySeats.length > 1 ? "s" : ""}`}
+                ? 'Pick seats to continue'
+                : `Claim ${mySeats.length} seat${mySeats.length > 1 ? 's' : ''}`}
           </Button>
         </form>
       </CardContent>
