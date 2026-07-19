@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -145,6 +146,43 @@ func TestHandleRefundReplayDoesNotDispatchAgain(t *testing.T) {
 	case event := <-events:
 		t.Errorf("replay dispatched a second settlement webhook: %+v", event)
 	case <-time.After(300 * time.Millisecond):
+	}
+}
+
+func TestStoreSurvivesConcurrentReadersAndWriters(t *testing.T) {
+	st := newStore()
+	intent := st.Create("order_1", 240000, "THB", "http://cb", "http://ret")
+	st.Resolve(intent.ID, statusSucceeded)
+
+	var wg sync.WaitGroup
+	for worker := 0; worker < 48; worker++ {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			switch worker % 3 {
+			case 0:
+				got, _ := st.Get(intent.ID)
+				_ = got.Status + got.Currency
+			case 1:
+				out, _ := st.Refund(intent.ID, "", 1000)
+				_ = out.Intent.RefundedSatang
+			default:
+				out, _ := st.Resolve(intent.ID, statusSucceeded)
+				_ = out.Status
+			}
+		}(worker)
+	}
+	wg.Wait()
+
+	final, ok := st.Get(intent.ID)
+	if !ok {
+		t.Fatal("intent vanished under concurrency")
+	}
+	if final.RefundedSatang > final.AmountSatang {
+		t.Errorf("refunded %d exceeds the %d paid", final.RefundedSatang, final.AmountSatang)
+	}
+	if final.Status != statusSucceeded {
+		t.Errorf("status = %q, want %q", final.Status, statusSucceeded)
 	}
 }
 
