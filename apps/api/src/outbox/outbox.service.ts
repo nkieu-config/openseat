@@ -51,6 +51,13 @@ export class OutboxService {
     });
     let processed = 0;
     for (const event of events) {
+      const claimed = await this.prisma.outboxEvent.updateMany({
+        where: { id: event.id, processedAt: null, attempts: event.attempts },
+        data: { attempts: { increment: 1 } },
+      });
+      if (claimed.count === 0) {
+        continue;
+      }
       try {
         await this.handle(event.type, event.payload as Record<string, unknown>);
         await this.prisma.outboxEvent.update({
@@ -62,10 +69,6 @@ export class OutboxService {
         this.logger.warn(
           `Outbox event ${event.id} (${event.type}) failed: ${String(error)}`,
         );
-        await this.prisma.outboxEvent.update({
-          where: { id: event.id },
-          data: { attempts: { increment: 1 } },
-        });
       }
     }
     return processed;
