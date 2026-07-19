@@ -14,7 +14,7 @@ export const en = {
     apiDocs: "API docs",
   },
   landing: {
-    status: "live · milestone 6 — the full build",
+    status: "live · eleven milestones, build then harden",
     title1: "Every seat, ",
     title2: "exactly once.",
     lead: "OpenSeat is open ticketing built to survive on-sale rushes. Create an event, share the link, and issue QR tickets — without ever selling the same spot twice.",
@@ -71,7 +71,7 @@ export const th: Dictionary = {
     apiDocs: "เอกสาร API",
   },
   landing: {
-    status: "ใช้งานจริง · milestone 6 — ครบทุกฟีเจอร์",
+    status: "ใช้งานจริง · สิบเอ็ด milestone สร้างแล้วเสริมความแกร่ง",
     title1: "ทุกที่นั่ง ",
     title2: "ขายครั้งเดียวเป๊ะ",
     lead: "OpenSeat คือระบบขายบัตรที่สร้างมาเพื่อรับมือช่วงเปิดขายที่คนแห่เข้าพร้อมกัน สร้างอีเวนต์ แชร์ลิงก์ แล้วออกบัตร QR ได้ทันที โดยไม่ขายที่นั่งเดิมซ้ำ",
