@@ -34,10 +34,12 @@ export class RealtimeService implements OnModuleDestroy {
     for (const seatId of change.held ?? []) {
       batch.held.add(seatId);
       batch.released.delete(seatId);
+      batch.sold.delete(seatId);
     }
     for (const seatId of change.released ?? []) {
       batch.released.add(seatId);
       batch.held.delete(seatId);
+      batch.sold.delete(seatId);
     }
     for (const seatId of change.sold ?? []) {
       batch.sold.add(seatId);
