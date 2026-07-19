@@ -1,12 +1,21 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
+)
+
+const (
+	maxRequestBytes = 64 << 10
+	shutdownGrace   = 10 * time.Second
 )
 
 func withResult(returnURL, status string) string {
@@ -73,6 +82,7 @@ func newServer(cfg config, st *store, dp *dispatcher) *server {
 }
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBytes)
 	s.mux.ServeHTTP(w, r)
 }
 
@@ -206,8 +216,33 @@ func (s *server) handleRefund(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	cfg := loadConfig()
+	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	dispatcher := newDispatcher(cfg.webhookSecret, cfg.duplicateWebhooks, defaultBackoff, log.Default())
-	srv := newServer(cfg, newStore(), dispatcher)
-	log.Printf("paymock listening on :%s (duplicate webhooks: %t)", cfg.port, cfg.duplicateWebhooks)
-	log.Fatal(http.ListenAndServe(":"+cfg.port, srv))
+	srv := &http.Server{
+		Addr:              ":" + cfg.port,
+		Handler:           newServer(cfg, newStore(), dispatcher),
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+	}
+	go func() {
+		log.Printf("paymock listening on :%s (duplicate webhooks: %t)", cfg.port, cfg.duplicateWebhooks)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("paymock server error: %v", err)
+			stop()
+		}
+	}()
+
+	<-rootCtx.Done()
+	stop()
+	log.Print("paymock shutting down")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("paymock shutdown: %v", err)
+	}
+	dispatcher.Close(shutdownGrace)
 }

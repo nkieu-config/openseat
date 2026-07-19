@@ -12,7 +12,7 @@ import (
 
 func testDispatcher(duplicate bool, backoff []time.Duration) *dispatcher {
 	d := newDispatcher("test-secret", duplicate, backoff, log.New(io.Discard, "", 0))
-	d.sleep = func(time.Duration) {}
+
 	return d
 }
 

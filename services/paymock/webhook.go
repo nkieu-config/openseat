@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -37,7 +38,8 @@ type dispatcher struct {
 	client    *http.Client
 	logger    *log.Logger
 	now       func() time.Time
-	sleep     func(time.Duration)
+	quit      chan struct{}
+	inFlight  sync.WaitGroup
 }
 
 func newDispatcher(secret string, duplicate bool, backoff []time.Duration, logger *log.Logger) *dispatcher {
@@ -48,12 +50,44 @@ func newDispatcher(secret string, duplicate bool, backoff []time.Duration, logge
 		client:    &http.Client{Timeout: 15 * time.Second},
 		logger:    logger,
 		now:       time.Now,
-		sleep:     time.Sleep,
+		quit:      make(chan struct{}),
 	}
 }
 
 func (d *dispatcher) Send(callbackURL string, event Event) {
-	go d.Deliver(callbackURL, event)
+	d.inFlight.Add(1)
+	go func() {
+		defer d.inFlight.Done()
+		d.Deliver(callbackURL, event)
+	}()
+}
+
+func (d *dispatcher) wait(delay time.Duration) bool {
+	if delay <= 0 {
+		return true
+	}
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-d.quit:
+		return false
+	case <-timer.C:
+		return true
+	}
+}
+
+func (d *dispatcher) Close(timeout time.Duration) {
+	close(d.quit)
+	drained := make(chan struct{})
+	go func() {
+		d.inFlight.Wait()
+		close(drained)
+	}()
+	select {
+	case <-drained:
+	case <-time.After(timeout):
+		d.logger.Print("webhook dispatcher: in-flight deliveries did not drain in time")
+	}
 }
 
 func (d *dispatcher) Deliver(callbackURL string, event Event) int {
@@ -70,8 +104,9 @@ func (d *dispatcher) Deliver(callbackURL string, event Event) int {
 			delivered = true
 			break
 		}
-		if attempt < len(d.backoff) {
-			d.sleep(d.backoff[attempt])
+		if attempt < len(d.backoff) && !d.wait(d.backoff[attempt]) {
+			d.logger.Printf("webhook %s: abandoned after %d attempts on shutdown", event.ID, attempt+1)
+			return deliveries
 		}
 	}
 	if !delivered {
