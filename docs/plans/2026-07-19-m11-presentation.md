@@ -37,6 +37,7 @@
 - `README.md` — full rewrite (status, two-act roadmap, proof section, media, docs map).
 - `docs/demo-script.md` — three new beats, retimed, closes on M10.
 - `render.yaml:33` — `APP_VERSION` `m10` → `m11`.
+- `apps/web/src/i18n/dictionaries.ts` — refresh the stale "milestone 6" landing status badge (EN + TH), so the captured social preview and landing tell the true status.
 - `tests/e2e/package.json` — add `capture` script.
 - `package.json` (root) — add `capture` script.
 - `tests/e2e/.gitignore` (create if absent) — ignore `capture/out/`.
@@ -230,7 +231,7 @@ test('hero — a held seat crossing two browsers', async ({ browser }) => {
 
 - [ ] **Step 3: Write the screenshots capture spec**
 
-Create `tests/e2e/capture/shots.capture.ts`. The console/editor/team/check-in shots reuse `demoContext(browser, 'organizer')`; the event id is read from the first `/organizer/events/` anchor so it never depends on link-vs-button role.
+Create `tests/e2e/capture/shots.capture.ts`. All organizer shots reuse `demoContext(browser, 'organizer')`. The **console, team, and check-in** shots use the **Bangkok Indie Fest 2026** card (the seated event — so the console carries the occupancy heatmap and the team panel shows the seeded linked-staff + pending-manager rows). The **seat-map editor** shot uses the **Midnight Drop** card instead: the editor only opens its drag-and-drop canvas for an event *without* a seat map, so the GA event is the one that reaches the editable canvas (the seated event shows an "already has a seat map" message). A `consoleHref(title)` helper resolves each card's console link from its `/organizer/events/` anchor, which never depends on link-vs-button role.
 
 ```ts
 import { mkdirSync } from 'node:fs';
@@ -271,12 +272,24 @@ test('shots — the curated product surfaces', async ({ browser }) => {
   const op = await org.newPage();
   await op.setViewportSize(VIEW);
 
-  await op.goto('/organizer');
-  const href = await op.locator('a[href^="/organizer/events/"]').first().getAttribute('href');
-  if (!href) {
-    throw new Error('no organizer event link found');
+  async function consoleHref(title: string): Promise<string> {
+    await op.goto('/organizer');
+    const link = op
+      .locator('div.rounded-md')
+      .filter({ has: op.getByRole('heading', { name: title }) })
+      .first()
+      .locator('a[href^="/organizer/events/"]')
+      .first();
+    await link.waitFor({ state: 'visible' });
+    const value = await link.getAttribute('href');
+    if (!value) {
+      throw new Error(`no console link for ${title}`);
+    }
+    return value;
   }
-  await op.goto(href);
+
+  const seatedHref = await consoleHref('Bangkok Indie Fest 2026');
+  await op.goto(seatedHref);
   await op.waitForTimeout(1500);
   await op.screenshot({ path: `${OUT}/console.png`, fullPage: true });
 
@@ -284,13 +297,17 @@ test('shots — the curated product surfaces', async ({ browser }) => {
   await op.waitForTimeout(500);
   await op.screenshot({ path: `${OUT}/team-panel.png` });
 
-  await op.goto(`${href}/seatmap`);
-  await op.waitForTimeout(1500);
-  await op.screenshot({ path: `${OUT}/seatmap-editor.png`, fullPage: true });
-
-  await op.goto(`${href}/checkin`);
+  await op.goto(`${seatedHref}/checkin`);
   await op.waitForTimeout(1000);
   await op.screenshot({ path: `${OUT}/check-in.png`, fullPage: true });
+
+  const dropHref = await consoleHref('Midnight Drop');
+  await op.goto(`${dropHref}/seatmap`);
+  const addSection = op.getByRole('button', { name: 'Section', exact: true });
+  await addSection.waitFor({ state: 'visible' });
+  await addSection.click();
+  await op.waitForTimeout(800);
+  await op.screenshot({ path: `${OUT}/seatmap-editor.png`, fullPage: true });
   await org.close();
 
   const social = await guestContext(browser);

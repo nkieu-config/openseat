@@ -10,7 +10,7 @@ M11 does not add a feature. It builds the paths that let three different readers
 
 ## Non-goals
 
-- **New product features or code changes.** This is a documentation-and-media milestone. The only source edits are the `APP_VERSION` stamp and removing dead scaffold assets — no runtime behavior changes, and no ADR, because nothing architectural is being decided.
+- **New product features or code changes.** This is a documentation-and-media milestone. The only source edits are the `APP_VERSION` stamp, a one-line refresh of the landing status badge (the last stale "milestone 6" claim in the web i18n dictionary, which the captured social preview would otherwise bake in), and removing dead scaffold assets — no runtime behavior changes, and no ADR, because nothing architectural is being decided.
 - **A hosted marketing site or landing microsite.** The product's own landing page is the marketing site. M11's surface is the GitHub repo and the assets inside it, not a new deployment.
 - **Rewriting the design docs, ADRs, or CONTEXT.md.** They are current through M10 and correct. M11 links to them; it does not touch them.
 - **A recorded demo video.** M11 refreshes the *script* so it is recordable and current, but the recording is a manual act the user performs on camera, not a repo artifact. (The hero GIF is a separate, silent, ~10-second loop — not the demo video.)
