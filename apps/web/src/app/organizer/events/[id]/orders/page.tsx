@@ -111,6 +111,12 @@ export default function OrdersConsolePage() {
       toast.success("Refund started — the money is on its way back");
       setSelected({});
       await load();
+    } catch (failure) {
+      toast.error(
+        failure instanceof Error
+          ? failure.message
+          : "Could not refund those tickets",
+      );
     } finally {
       setBusyOrderId(null);
     }
@@ -129,6 +135,10 @@ export default function OrdersConsolePage() {
       }
       toast.success("Retrying the refund");
       await load();
+    } catch (failure) {
+      toast.error(
+        failure instanceof Error ? failure.message : "Could not retry the refund",
+      );
     } finally {
       setBusyOrderId(null);
     }

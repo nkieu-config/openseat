@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, apiErrorMessage } from "@/lib/api";
-import { cn } from "@/lib/utils";
 
 type TeamMember = {
   id: string;
@@ -61,18 +60,25 @@ export function TeamPanel({ eventId }: { eventId: string }) {
       return;
     }
     setBusy(true);
-    const { error, response } = await api.POST("/api/events/{eventId}/team", {
-      params: { path: { eventId } },
-      body: { email: trimmed, role },
-    });
-    setBusy(false);
-    if (!response.ok) {
-      toast.error(apiErrorMessage(error, "Could not add that person"));
-      return;
+    try {
+      const { error, response } = await api.POST("/api/events/{eventId}/team", {
+        params: { path: { eventId } },
+        body: { email: trimmed, role },
+      });
+      if (!response.ok) {
+        toast.error(apiErrorMessage(error, "Could not add that person"));
+        return;
+      }
+      setEmail("");
+      toast.success("Added to the team");
+      await refresh();
+    } catch (failure) {
+      toast.error(
+        failure instanceof Error ? failure.message : "Could not add that person",
+      );
+    } finally {
+      setBusy(false);
     }
-    setEmail("");
-    toast.success("Added to the team");
-    await refresh();
   }
 
   async function changeRole(memberId: string, nextRole: Role) {
