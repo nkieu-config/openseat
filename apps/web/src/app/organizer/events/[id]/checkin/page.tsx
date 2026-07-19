@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Camera, CameraOff } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -11,6 +11,10 @@ import {
   useSyncExternalStore,
 } from "react";
 import { useAuth } from "@/components/auth-provider";
+import {
+  ConsoleEventMissing,
+  ConsoleLoadFailed,
+} from "@/components/console/gate-notice";
 import { ConsolePanel, SignalLamp } from "@/components/console/panel";
 import { TelemetryStat } from "@/components/console/telemetry";
 import { Button } from "@/components/ui/button";
@@ -18,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { checkInTicket, type CheckinResult } from "@/lib/checkin";
 import { fetchEventSummary } from "@/lib/dashboard";
+import { useConsoleGate } from "@/lib/use-console-gate";
 import { cn } from "@/lib/utils";
 
 type DetectedBarcode = { rawValue: string };
@@ -57,13 +62,9 @@ function subscribeNoop() {
 export default function CheckinConsolePage() {
   const params = useParams<{ id: string }>();
   const eventId = params.id;
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { loading } = useAuth();
 
-  const [state, setState] = useState<"loading" | "ready" | "missing">("loading");
-  const [eventTitle, setEventTitle] = useState("");
-  const [checkedIn, setCheckedIn] = useState(0);
-  const [sold, setSold] = useState(0);
+  const [scannedHere, setScannedHere] = useState(0);
   const [token, setToken] = useState("");
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
@@ -82,35 +83,18 @@ export default function CheckinConsolePage() {
   const lastScanRef = useRef<{ token: string; at: number } | null>(null);
   const feedIdRef = useRef(0);
 
-  useEffect(() => {
-    if (loading) {
-      return;
-    }
-    if (!user) {
-      router.replace(`/login?next=/organizer/events/${eventId}/checkin`);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const summary = await fetchEventSummary(eventId);
-        if (cancelled) {
-          return;
-        }
-        setEventTitle(summary.title);
-        setCheckedIn(summary.ticketsCheckedIn);
-        setSold(summary.ticketsSold);
-        setState("ready");
-      } catch {
-        if (!cancelled) {
-          setState("missing");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, loading, router, eventId]);
+  const loadSummary = useCallback(
+    () => fetchEventSummary(eventId),
+    [eventId],
+  );
+  const gate = useConsoleGate(
+    `/organizer/events/${eventId}/checkin`,
+    loadSummary,
+  );
+  const eventTitle = gate.data?.title ?? "";
+  const sold = gate.data?.ticketsSold ?? 0;
+
+  const checkedIn = (gate.data?.ticketsCheckedIn ?? 0) + scannedHere;
 
   const submitToken = useCallback(
     async (raw: string) => {
@@ -136,7 +120,7 @@ export default function CheckinConsolePage() {
         const tone: ScanTone = admitted ? "ok" : "warn";
         const seatLabel = response.result.seat ?? response.result.ticketType;
         if (admitted) {
-          setCheckedIn((count) => count + 1);
+          setScannedHere((count) => count + 1);
         }
         setResult({
           tone,
@@ -236,7 +220,7 @@ export default function CheckinConsolePage() {
     };
   }, [cameraOn, submitToken]);
 
-  if (loading || state === "loading") {
+  if (loading || gate.state === "loading") {
     return (
       <main className="flex flex-1 items-center justify-center">
         <p className="font-mono text-sm text-muted-foreground">
@@ -245,12 +229,11 @@ export default function CheckinConsolePage() {
       </main>
     );
   }
-  if (state === "missing") {
-    return (
-      <main className="flex flex-1 items-center justify-center">
-        <p className="text-muted-foreground">Event not found.</p>
-      </main>
-    );
+  if (gate.state === "error") {
+    return <ConsoleLoadFailed onRetry={gate.reload} />;
+  }
+  if (gate.state !== "ready") {
+    return <ConsoleEventMissing />;
   }
 
   const remaining = Math.max(sold - checkedIn, 0);

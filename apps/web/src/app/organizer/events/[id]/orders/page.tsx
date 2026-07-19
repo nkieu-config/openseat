@@ -2,16 +2,19 @@
 
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { useAuth } from "@/components/auth-provider";
+import {
+  ConsoleEventMissing,
+  ConsoleLoadFailed,
+} from "@/components/console/gate-notice";
 import { ConsolePanel, SignalLamp } from "@/components/console/panel";
 import { Button } from "@/components/ui/button";
 import { api, apiErrorMessage } from "@/lib/api";
 import { fetchEventOrders, type EventOrder } from "@/lib/dashboard";
 import { formatBaht } from "@/lib/format";
-import { isForbiddenError } from "@/lib/graphql";
+import { useConsoleGate } from "@/lib/use-console-gate";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -27,45 +30,17 @@ function shortId(id: string): string {
 export default function OrdersConsolePage() {
   const params = useParams<{ id: string }>();
   const eventId = params.id;
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  const [state, setState] = useState<
-    "loading" | "ready" | "missing" | "forbidden"
-  >("loading");
-  const [orders, setOrders] = useState<EventOrder[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [armedOrderId, setArmedOrderId] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    const rows = await fetchEventOrders(eventId);
-    setOrders(rows);
-    setState("ready");
-  }, [eventId]);
-
-  useEffect(() => {
-    if (loading) {
-      return;
-    }
-    if (!user) {
-      router.replace(`/login?next=/organizer/events/${eventId}/orders`);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        await load();
-      } catch (error) {
-        if (!cancelled) {
-          setState(isForbiddenError(error) ? "forbidden" : "missing");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, loading, router, eventId, load]);
+  const load = useCallback(() => fetchEventOrders(eventId), [eventId]);
+  const gate = useConsoleGate<EventOrder[]>(
+    `/organizer/events/${eventId}/orders`,
+    load,
+  );
+  const state = gate.state;
+  const orders = gate.data ?? [];
 
   function toggleTicket(ticketId: string) {
     setArmedOrderId(null);
@@ -110,7 +85,7 @@ export default function OrdersConsolePage() {
       }
       toast.success("Refund started — the money is on its way back");
       setSelected({});
-      await load();
+      gate.reload();
     } catch (failure) {
       toast.error(
         failure instanceof Error
@@ -134,7 +109,7 @@ export default function OrdersConsolePage() {
         return;
       }
       toast.success("Retrying the refund");
-      await load();
+      gate.reload();
     } catch (failure) {
       toast.error(
         failure instanceof Error ? failure.message : "Could not retry the refund",
@@ -171,12 +146,11 @@ export default function OrdersConsolePage() {
       </main>
     );
   }
-  if (state === "missing") {
-    return (
-      <main className="flex flex-1 items-center justify-center">
-        <p className="text-muted-foreground">Event not found.</p>
-      </main>
-    );
+  if (state === "error") {
+    return <ConsoleLoadFailed onRetry={gate.reload} />;
+  }
+  if (state !== "ready") {
+    return <ConsoleEventMissing />;
   }
 
   return (

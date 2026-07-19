@@ -2,9 +2,9 @@
 
 import { CalendarPlus } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { ConsoleLoadFailed } from "@/components/console/gate-notice";
 import { TelemetryStat } from "@/components/console/telemetry";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -12,39 +12,18 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchOrganizerEvents, type EventCard } from "@/lib/dashboard";
 import { formatBaht, formatEventDate } from "@/lib/format";
+import { useConsoleGate } from "@/lib/use-console-gate";
 
 export default function OrganizerPage() {
   const { user, loading } = useAuth();
-  const router = useRouter();
-  const [events, setEvents] = useState<EventCard[] | null>(null);
+  const load = useCallback(() => fetchOrganizerEvents(), []);
+  const gate = useConsoleGate<EventCard[]>("/organizer", load);
+  const events = gate.data;
 
-  useEffect(() => {
-    if (loading) {
-      return;
-    }
-    if (!user) {
-      router.replace("/login?next=/organizer");
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const list = await fetchOrganizerEvents();
-        if (!cancelled) {
-          setEvents(list);
-        }
-      } catch {
-        if (!cancelled) {
-          setEvents([]);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, loading, router]);
-
-  if (loading || (user && events === null)) {
+  if (gate.state === "error") {
+    return <ConsoleLoadFailed onRetry={gate.reload} />;
+  }
+  if (loading || (user && gate.state === "loading")) {
     return (
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
         <div className="flex items-center justify-between gap-4">

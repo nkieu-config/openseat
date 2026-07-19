@@ -3,51 +3,34 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useAuth } from "@/components/auth-provider";
+import {
+  ConsoleEventMissing,
+  ConsoleLoadFailed,
+} from "@/components/console/gate-notice";
 import { Button } from "@/components/ui/button";
 import { fetchEventDashboard } from "@/lib/dashboard";
+import { useConsoleGate } from "@/lib/use-console-gate";
 import { SeatMapEditor } from "./seat-map-editor";
 
 export default function SeatMapEditorPage() {
   const params = useParams<{ id: string }>();
   const eventId = params.id;
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
   const router = useRouter();
-  const [state, setState] = useState<
-    "loading" | "ready" | "missing" | "exists"
-  >("loading");
-  const [title, setTitle] = useState("");
+  const load = useCallback(
+    () => fetchEventDashboard(eventId),
+    [eventId],
+  );
+  const gate = useConsoleGate(
+    `/organizer/events/${eventId}/seatmap`,
+    load,
+  );
+  const title = gate.data?.event.title ?? "";
+  const alreadySeated = gate.data?.event.seated ?? false;
 
-  useEffect(() => {
-    if (loading) {
-      return;
-    }
-    if (!user) {
-      router.replace(`/login?next=/organizer/events/${eventId}/seatmap`);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const dash = await fetchEventDashboard(eventId);
-        if (cancelled) {
-          return;
-        }
-        setTitle(dash.event.title);
-        setState(dash.event.seated ? "exists" : "ready");
-      } catch {
-        if (!cancelled) {
-          setState("missing");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, loading, router, eventId]);
-
-  if (loading || state === "loading") {
+  if (loading || gate.state === "loading") {
     return (
       <main className="flex flex-1 items-center justify-center">
         <p className="font-mono text-sm text-muted-foreground">
@@ -56,12 +39,11 @@ export default function SeatMapEditorPage() {
       </main>
     );
   }
-  if (state === "missing") {
-    return (
-      <main className="flex flex-1 items-center justify-center">
-        <p className="text-muted-foreground">Event not found.</p>
-      </main>
-    );
+  if (gate.state === "error") {
+    return <ConsoleLoadFailed onRetry={gate.reload} />;
+  }
+  if (gate.state !== "ready") {
+    return <ConsoleEventMissing />;
   }
 
   return (
@@ -78,7 +60,7 @@ export default function SeatMapEditorPage() {
         <p className="text-sm text-muted-foreground">{title}</p>
       </header>
 
-      {state === "exists" ? (
+      {alreadySeated ? (
         <div className="rounded-md border border-console-line bg-console-panel p-6 text-center">
           <p className="text-muted-foreground">
             This event already has a seat map.

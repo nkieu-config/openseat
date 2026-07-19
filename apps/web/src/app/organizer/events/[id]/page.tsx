@@ -4,9 +4,13 @@ import type { SeatMapData } from "@openseat/contracts";
 import { Download, LayoutGrid, Receipt, ScanLine } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
+import {
+  ConsoleEventMissing,
+  ConsoleLoadFailed,
+} from "@/components/console/gate-notice";
 import { ConsolePanel, SignalLamp } from "@/components/console/panel";
 import {
   OccupancyRig,
@@ -26,7 +30,6 @@ import {
   fetchEventSummary,
   type EventDashboard,
 } from "@/lib/dashboard";
-import { isForbiddenError } from "@/lib/graphql";
 import {
   formatBaht,
   formatDayLabel,
@@ -34,73 +37,56 @@ import {
   formatPercentBp,
   formatPrice,
 } from "@/lib/format";
+import { useConsoleGate } from "@/lib/use-console-gate";
 import { TeamPanel } from "./team-panel";
 export default function EventConsolePage() {
   const params = useParams<{ id: string }>();
   const eventId = params.id;
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
   const router = useRouter();
-  const [dashboard, setDashboard] = useState<EventDashboard | null>(null);
-  const [seatMap, setSeatMap] = useState<SeatMapData | null>(null);
-  const [state, setState] = useState<"loading" | "ready" | "missing">("loading");
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
 
-  useEffect(() => {
-    if (loading) {
-      return;
+  const load = useCallback(async () => {
+    const dash = await fetchEventDashboard(eventId);
+    let map: SeatMapData | null = null;
+    if (dash.event.seated) {
+      const { data } = await api.GET("/api/events/{eventId}/seat-map", {
+        params: { path: { eventId } },
+      });
+      map = (data as unknown as SeatMapData | undefined) ?? null;
     }
-    if (!user) {
-      router.replace(`/login?next=/organizer/events/${eventId}`);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const dash = await fetchEventDashboard(eventId);
-        let map: SeatMapData | null = null;
-        if (dash.event.seated) {
-          const { data } = await api.GET("/api/events/{eventId}/seat-map", {
-            params: { path: { eventId } },
-          });
-          map = (data as unknown as SeatMapData | undefined) ?? null;
-        }
-        if (cancelled) {
-          return;
-        }
-        setDashboard(dash);
-        setSeatMap(map);
-        setQuantities(
-          Object.fromEntries(dash.tiers.map((tier) => [tier.id, tier.quantity])),
-        );
-        setState("ready");
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-        if (isForbiddenError(error)) {
-          try {
-            const summary = await fetchEventSummary(eventId);
-            if (cancelled) {
-              return;
-            }
-            if (summary.myRole === "staff") {
-              router.replace(`/organizer/events/${eventId}/checkin`);
-              return;
-            }
-          } catch {
-            /* fall through to missing */
-          }
-        }
-        setState("missing");
+    return { dash, map };
+  }, [eventId]);
+
+  const sendStaffToTheDoor = useCallback(async () => {
+    try {
+      const summary = await fetchEventSummary(eventId);
+      if (summary.myRole !== "staff") {
+        return false;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, loading, router, eventId, reloadKey]);
+      router.replace(`/organizer/events/${eventId}/checkin`);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [eventId, router]);
+
+  const gate = useConsoleGate(
+    `/organizer/events/${eventId}`,
+    load,
+    sendStaffToTheDoor,
+  );
+  const state = gate.state;
+  const dashboard: EventDashboard | null = gate.data?.dash ?? null;
+  const seatMap = gate.data?.map ?? null;
+  const [quantityEdits, setQuantityEdits] = useState<Record<string, number>>({});
+  const quantities: Record<string, number> = Object.fromEntries(
+    (dashboard?.tiers ?? []).map((tier) => [
+      tier.id,
+      quantityEdits[tier.id] ?? tier.quantity,
+    ]),
+  );
 
   async function publish() {
     setBusy(true);
@@ -113,7 +99,7 @@ export default function EventConsolePage() {
         return;
       }
       toast.success("Event published — share the public link");
-      setReloadKey((key) => key + 1);
+      gate.reload();
     } catch (failure) {
       toast.error(
         failure instanceof Error ? failure.message : "Could not publish",
@@ -141,7 +127,7 @@ export default function EventConsolePage() {
       return;
     }
     toast.success("Quantity updated");
-    setReloadKey((key) => key + 1);
+    gate.reload();
   }
 
   async function exportCsv() {
@@ -167,12 +153,11 @@ export default function EventConsolePage() {
       </main>
     );
   }
-  if (state === "missing" || !dashboard) {
-    return (
-      <main className="flex flex-1 items-center justify-center">
-        <p className="text-muted-foreground">Event not found.</p>
-      </main>
-    );
+  if (state === "error") {
+    return <ConsoleLoadFailed onRetry={gate.reload} />;
+  }
+  if (state !== "ready" || !dashboard) {
+    return <ConsoleEventMissing />;
   }
 
   const { event, totals, timeline, tiers, sections } = dashboard;
@@ -387,7 +372,7 @@ export default function EventConsolePage() {
                       className="w-28 font-mono tabular-nums"
                       value={quantities[tier.id] ?? tier.quantity}
                       onChange={(changeEvent) =>
-                        setQuantities((current) => ({
+                        setQuantityEdits((current) => ({
                           ...current,
                           [tier.id]: Number(changeEvent.target.value),
                         }))

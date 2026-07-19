@@ -37,6 +37,16 @@ export function isForbiddenError(error: unknown): boolean {
   );
 }
 
+export function isNotFoundError(error: unknown): boolean {
+  return (
+    error instanceof GraphqlError &&
+    error.errors.some(
+      (item) =>
+        item.extensions?.code === "NOT_FOUND" || /not found/i.test(item.message),
+    )
+  );
+}
+
 export async function gqlRequest<T>(
   query: string,
   variables?: Record<string, unknown>,
