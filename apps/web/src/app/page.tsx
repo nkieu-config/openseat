@@ -134,15 +134,17 @@ export default async function Home() {
       <section className="mt-16 w-full max-w-5xl">
         <Card className="bg-card/60">
           <CardHeader>
-            <CardTitle className="text-base">On the roadmap</CardTitle>
+            <CardTitle className="text-base">What shipped</CardTitle>
             <CardDescription className="leading-relaxed">
-              Reserved seating with a live seat map (M2), simulated payments with webhooks (M3),
-              organizer analytics and QR check-in (M4), a waiting room for ticket drops with a
-              published load test (M5), and a drag-and-drop seat-map editor (M6).
+              Reserved seating on a live seat map, simulated payments with signed webhooks, organizer
+              analytics with QR check-in, a waiting room for ticket drops backed by a published load
+              test, and a drag-and-drop seat-map editor — then a hardening pass that added
+              OpenTelemetry observability, browser end-to-end tests on every pull request, organizer
+              refunds, and per-event team roles.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Follow the build at{" "}
+            Read the code at{" "}
             <a
               href="https://github.com/nkieu-config/openseat"
               className="underline underline-offset-4 hover:text-foreground"
