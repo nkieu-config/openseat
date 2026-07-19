@@ -3,7 +3,7 @@
 import type { OrderDetail } from "@openseat/contracts";
 import { CircleCheck, CircleX, Clock, SearchX } from "lucide-react";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
@@ -51,7 +51,9 @@ function PaymentCountdown({ expiresAt }: { expiresAt: string }) {
 function OrderView() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
-  const guestToken = searchParams.get("token");
+  const router = useRouter();
+  const tokenParam = searchParams.get("token");
+  const [guestToken] = useState<string | null>(tokenParam);
   const paymentResult = searchParams.get("payment");
   const { loading: authLoading } = useAuth();
   const [order, setOrder] = useState<OrderDetail | null>(null);
@@ -63,6 +65,19 @@ function OrderView() {
       toast.error("The payment was declined — your order was canceled");
     }
   }, [paymentResult]);
+
+  useEffect(() => {
+    if (!tokenParam) {
+      return;
+    }
+    const remaining = new URLSearchParams(searchParams.toString());
+    remaining.delete("token");
+    const query = remaining.toString();
+    router.replace(
+      query ? `/orders/${params.id}?${query}` : `/orders/${params.id}`,
+      { scroll: false },
+    );
+  }, [tokenParam, searchParams, params.id, router]);
 
   useEffect(() => {
     if (authLoading) {
@@ -92,9 +107,15 @@ function OrderView() {
     };
   }, [params.id, guestToken, authLoading, reloadKey]);
 
+  const isLive =
+    order !== null &&
+    ["awaiting_payment", "paid", "partially_refunded"].includes(order.status);
+  const orderId = order?.id;
+  const orderEventId = order?.event.id;
+  const orderGuestToken = order?.guestToken;
+
   useEffect(() => {
-    const liveStatuses = ["awaiting_payment", "paid", "partially_refunded"];
-    if (!order || !liveStatuses.includes(order.status)) {
+    if (!isLive || !orderId || !orderEventId) {
       return;
     }
     let cancelled = false;
@@ -103,10 +124,10 @@ function OrderView() {
       if (cancelled) {
         return;
       }
-      const socket = createEventSocket(order.event.id);
+      const socket = createEventSocket(orderEventId);
       socket.emit("join-order", {
-        orderId: order.id,
-        guestToken: order.guestToken,
+        orderId,
+        guestToken: orderGuestToken,
       });
       socket.on("order", () => setReloadKey((key) => key + 1));
       disconnect = () => socket.disconnect();
@@ -117,7 +138,7 @@ function OrderView() {
       clearInterval(poll);
       disconnect?.();
     };
-  }, [order]);
+  }, [isLive, orderId, orderEventId, orderGuestToken]);
 
   if (state === "loading") {
     return <OrderSkeleton />;
