@@ -1,6 +1,6 @@
 # M11 — Presentation pack ("Make the work legible")
 
-Status: Approved (2026-07-19)
+Status: Accepted (2026-07-19) — implemented in M11.
 
 ## Goal
 
