@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -174,13 +175,23 @@ export class EventsService {
         }
         remainingDelta = dto.quantity - ticketType.quantity;
       }
+      if (remainingDelta !== 0) {
+        const applied = await tx.$executeRaw`
+          UPDATE ticket_types
+          SET remaining = remaining + ${remainingDelta}, updated_at = now()
+          WHERE id = ${ticketTypeId} AND remaining + ${remainingDelta} >= 0`;
+        if (applied !== 1) {
+          throw new ConflictException(
+            'Tickets sold while the quantity was changing — reload and try again',
+          );
+        }
+      }
       return tx.ticketType.update({
         where: { id: ticketTypeId },
         data: {
           name: dto.name?.trim(),
           maxPerOrder: dto.maxPerOrder,
           quantity: dto.quantity,
-          remaining: { increment: remainingDelta },
         },
       });
     });

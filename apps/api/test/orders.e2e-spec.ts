@@ -205,4 +205,47 @@ describe('Orders (e2e)', () => {
       .get(`/api/orders/${order.id}`)
       .expect(404);
   });
+
+  it('never lets a shrink racing live sales drive remaining negative', async () => {
+    const event = await createPublishedEvent(20);
+    const ticketTypeId = event.ticketTypes[0].id;
+
+    const buys = Array.from({ length: 10 }, (_, index) =>
+      request(app.getHttpServer())
+        .post(`/api/events/${event.id}/orders`)
+        .send({
+          items: [{ ticketTypeId, quantity: 2 }],
+          buyerEmail: `shrink-racer-${index}@example.com`,
+          buyerName: 'Shrink Racer',
+        })
+        .then((res) => res.status),
+    );
+    const shrinks = Array.from({ length: 10 }, () =>
+      request(app.getHttpServer())
+        .patch(`/api/events/${event.id}/ticket-types/${ticketTypeId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ quantity: 2 })
+        .then((res) => res.status),
+    );
+
+    const statuses = await Promise.all([...buys, ...shrinks]);
+    expect(statuses.filter((status) => status >= 500)).toHaveLength(0);
+
+    const final = await prisma.ticketType.findUniqueOrThrow({
+      where: { id: ticketTypeId },
+    });
+    expect(final.remaining).toBeGreaterThanOrEqual(0);
+  });
+
+  it('keeps the database from storing a negative remaining', async () => {
+    const event = await createPublishedEvent(5);
+    const ticketTypeId = event.ticketTypes[0].id;
+
+    await expect(
+      prisma.ticketType.update({
+        where: { id: ticketTypeId },
+        data: { remaining: -1 },
+      }),
+    ).rejects.toThrow(/ticket_types_remaining_non_negative/);
+  });
 });
