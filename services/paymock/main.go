@@ -142,19 +142,19 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		status = statusFailed
 		eventType = "payment.failed"
 	}
-	intent, ok := s.store.Resolve(r.PathValue("id"), status)
-	if intent == nil {
+	intent, errCode := s.store.Resolve(r.PathValue("id"), status)
+	if errCode == "not_found" {
 		http.Error(w, "payment intent not found", http.StatusNotFound)
 		return
 	}
-	if ok {
+	if errCode == "" {
 		s.dispatcher.Send(intent.CallbackURL, Event{
 			ID:           newID("evt_"),
 			Type:         eventType,
 			IntentID:     intent.ID,
 			OrderID:      intent.OrderID,
 			AmountSatang: intent.AmountSatang,
-			CreatedAt:    time.Now(),
+			CreatedAt:    time.Now().UTC(),
 		})
 	}
 	http.Redirect(w, r, withResult(intent.ReturnURL, intent.Status), http.StatusSeeOther)
@@ -194,7 +194,7 @@ func (s *server) handleRefund(w http.ResponseWriter, r *http.Request) {
 		AmountSatang: req.AmountSatang,
 		RefundID:     refundID,
 		Reference:    req.Reference,
-		CreatedAt:    time.Now(),
+		CreatedAt:    time.Now().UTC(),
 	})
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"refundId":       refundID,

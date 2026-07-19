@@ -42,7 +42,7 @@ func newID(prefix string) string {
 	return prefix + hex.EncodeToString(buf)
 }
 
-func (s *store) Create(orderID string, amountSatang int64, currency, callbackURL, returnURL string) *Intent {
+func (s *store) Create(orderID string, amountSatang int64, currency, callbackURL, returnURL string) Intent {
 	intent := &Intent{
 		ID:           newID("pi_"),
 		OrderID:      orderID,
@@ -51,48 +51,54 @@ func (s *store) Create(orderID string, amountSatang int64, currency, callbackURL
 		CallbackURL:  callbackURL,
 		ReturnURL:    returnURL,
 		Status:       statusRequiresAction,
-		CreatedAt:    time.Now(),
+		CreatedAt:    time.Now().UTC(),
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.intents[intent.ID] = intent
-	return intent
+	return *intent
 }
 
-func (s *store) Get(id string) (*Intent, bool) {
+func (s *store) Get(id string) (Intent, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	intent, ok := s.intents[id]
-	return intent, ok
-}
-
-func (s *store) Resolve(id, status string) (*Intent, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	intent, ok := s.intents[id]
-	if !ok || intent.Status != statusRequiresAction {
-		return intent, false
+	if !ok {
+		return Intent{}, false
 	}
-	intent.Status = status
-	return intent, true
+	return *intent, true
 }
 
-func (s *store) Refund(id string, amountSatang int64) (*Intent, string) {
+func (s *store) Resolve(id, status string) (Intent, string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	intent, ok := s.intents[id]
 	if !ok {
-		return nil, "not_found"
+		return Intent{}, "not_found"
+	}
+	if intent.Status != statusRequiresAction {
+		return *intent, "already_resolved"
+	}
+	intent.Status = status
+	return *intent, ""
+}
+
+func (s *store) Refund(id string, amountSatang int64) (Intent, string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	intent, ok := s.intents[id]
+	if !ok {
+		return Intent{}, "not_found"
 	}
 	if amountSatang <= 0 {
-		return intent, "invalid_amount"
+		return *intent, "invalid_amount"
 	}
 	if intent.Status != statusSucceeded {
-		return intent, "not_succeeded"
+		return *intent, "not_succeeded"
 	}
 	if intent.RefundedSatang+amountSatang > intent.AmountSatang {
-		return intent, "over_refund"
+		return *intent, "over_refund"
 	}
 	intent.RefundedSatang += amountSatang
-	return intent, ""
+	return *intent, ""
 }

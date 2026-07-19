@@ -30,8 +30,12 @@ func TestStoreRefundTransitions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			st := newStore()
 			intent := st.Create("order_1", tc.paid, "THB", "http://cb", "http://ret")
-			intent.Status = tc.status
-			intent.RefundedSatang = tc.already
+			if tc.status != statusRequiresAction {
+				st.Resolve(intent.ID, tc.status)
+			}
+			if tc.already > 0 {
+				st.Refund(intent.ID, tc.already)
+			}
 			got, errCode := st.Refund(intent.ID, tc.amount)
 			if errCode != tc.wantErr {
 				t.Fatalf("errCode = %q, want %q", errCode, tc.wantErr)
@@ -39,8 +43,11 @@ func TestStoreRefundTransitions(t *testing.T) {
 			if tc.wantErr == "" && got.RefundedSatang != tc.wantTotal {
 				t.Errorf("RefundedSatang = %d, want %d", got.RefundedSatang, tc.wantTotal)
 			}
-			if tc.wantErr != "" && intent.RefundedSatang != tc.already {
-				t.Errorf("RefundedSatang moved to %d on a rejected refund, want %d", intent.RefundedSatang, tc.already)
+			if tc.wantErr != "" {
+				current, _ := st.Get(intent.ID)
+				if current.RefundedSatang != tc.already {
+					t.Errorf("RefundedSatang moved to %d on a rejected refund, want %d", current.RefundedSatang, tc.already)
+				}
 			}
 		})
 	}
@@ -67,7 +74,7 @@ func TestHandleRefundDispatchesRefundedEvent(t *testing.T) {
 	st := newStore()
 	srv := newServer(cfg, st, testDispatcher(true, []time.Duration{0}))
 	intent := st.Create("order_1", 240000, "THB", callback.URL, "http://ret")
-	intent.Status = statusSucceeded
+	st.Resolve(intent.ID, statusSucceeded)
 
 	req := httptest.NewRequest(http.MethodPost, "/intents/"+intent.ID+"/refunds",
 		strings.NewReader(`{"amountSatang":150000,"reference":"rf_test_1"}`))
@@ -112,7 +119,7 @@ func TestHandleRefundRejectsBadKeyAndBadStates(t *testing.T) {
 	st := newStore()
 	srv := newServer(cfg, st, testDispatcher(false, []time.Duration{0}))
 	paid := st.Create("order_1", 240000, "THB", "http://cb.invalid", "http://ret")
-	paid.Status = statusSucceeded
+	st.Resolve(paid.ID, statusSucceeded)
 	pending := st.Create("order_2", 240000, "THB", "http://cb.invalid", "http://ret")
 
 	cases := []struct {
