@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Worker } from 'bullmq';
 import Redis from 'ioredis';
-import { ORDERS_QUEUE } from '../orders/orders.queue';
+import { EXPIRE_JOB, ORDERS_QUEUE } from '../orders/orders.queue';
 import { OrdersService } from '../orders/orders.service';
 
 @Injectable()
@@ -36,6 +36,13 @@ export class OrdersExpiryWorker implements OnModuleInit, OnModuleDestroy {
     this.worker = new Worker(
       ORDERS_QUEUE,
       async (job) => {
+        if (job.name !== EXPIRE_JOB) {
+          const reconciled = await this.orders.reconcileExpired();
+          if (reconciled > 0) {
+            this.logger.log(`Reconciled ${reconciled} stranded orders`);
+          }
+          return;
+        }
         const { orderId } = job.data as { orderId: string };
         await this.orders.expireOrder(orderId);
       },

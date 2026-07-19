@@ -9,6 +9,10 @@ import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 
 export const ORDERS_QUEUE = 'orders';
+export const EXPIRE_JOB = 'expire';
+export const RECONCILE_JOB = 'reconcile-expired-orders';
+
+const DEFAULT_RECONCILE_INTERVAL_MS = 60_000;
 
 @Injectable()
 export class OrdersQueueService implements OnModuleInit, OnModuleDestroy {
@@ -18,7 +22,7 @@ export class OrdersQueueService implements OnModuleInit, OnModuleDestroy {
 
   constructor(private readonly config: ConfigService) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     if (process.env.NODE_ENV === 'test') {
       return;
     }
@@ -32,16 +36,24 @@ export class OrdersQueueService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`Orders queue redis error: ${error.message}`);
     });
     this.queue = new Queue(ORDERS_QUEUE, { connection: this.connection });
+    await this.queue.upsertJobScheduler(RECONCILE_JOB, {
+      every: Number(
+        this.config.get('ORDER_RECONCILE_INTERVAL_MS') ??
+          DEFAULT_RECONCILE_INTERVAL_MS,
+      ),
+    });
   }
 
   enqueueExpiry(orderId: string, delayMs: number) {
     void this.queue
       ?.add(
-        'expire',
+        EXPIRE_JOB,
         { orderId },
         {
           delay: delayMs,
           jobId: `expire-${orderId}`,
+          attempts: 5,
+          backoff: { type: 'exponential', delay: 10_000 },
           removeOnComplete: true,
           removeOnFail: true,
         },

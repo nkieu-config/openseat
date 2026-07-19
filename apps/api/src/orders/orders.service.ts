@@ -34,6 +34,7 @@ const ORDER_INCLUDE = {
 };
 
 const PAYMENT_WINDOW_MS = 15 * 60_000;
+const RECONCILE_BATCH_SIZE = 100;
 
 @Injectable()
 export class OrdersService {
@@ -360,6 +361,28 @@ export class OrdersService {
       status: finalStatus,
     });
     return true;
+  }
+
+  async reconcileExpired(): Promise<number> {
+    const stranded = await this.prisma.order.findMany({
+      where: { status: 'awaiting_payment', expiresAt: { lte: new Date() } },
+      select: { id: true },
+      orderBy: { expiresAt: 'asc' },
+      take: RECONCILE_BATCH_SIZE,
+    });
+    let expired = 0;
+    for (const order of stranded) {
+      const released = await this.prisma.$transaction((tx) =>
+        this.releaseOrderInventoryInTx(tx, order.id, 'expired'),
+      );
+      if (released) {
+        expired += 1;
+      }
+    }
+    if (expired > 0) {
+      this.outbox.nudge();
+    }
+    return expired;
   }
 
   async expireOrder(
