@@ -99,7 +99,7 @@ export class TeamService {
         },
         include: MEMBER_INCLUDE,
       });
-      return { ...toView(member), displayName: null };
+      return toView(member);
     } catch (error) {
       if (isUniqueViolation(error)) {
         throw new ConflictException('This email is already on the team');
