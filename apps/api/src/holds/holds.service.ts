@@ -109,7 +109,7 @@ export class HoldsService {
     const expired = await this.prisma.$queryRaw<
       { event_id: string; seat_id: string }[]
     >`
-      DELETE FROM holds WHERE expires_at <= now() RETURNING event_id, seat_id`;
+      DELETE FROM holds WHERE expires_at <= now() AND order_id IS NULL RETURNING event_id, seat_id`;
     const byEvent = new Map<string, string[]>();
     for (const row of expired) {
       const seats = byEvent.get(row.event_id) ?? [];
