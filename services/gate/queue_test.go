@@ -68,7 +68,7 @@ func TestAdmitPopsFrontAndMarksAdmitted(t *testing.T) {
 	}
 }
 
-func TestSimulatePushesRealVisitorBack(t *testing.T) {
+func TestSimulateQueuesBotsBehindWhoeverIsAlreadyWaiting(t *testing.T) {
 	q := newTestQueue(t)
 	ctx := context.Background()
 
@@ -78,12 +78,33 @@ func TestSimulatePushesRealVisitorBack(t *testing.T) {
 	if _, err := q.Simulate(ctx, "e", 50); err != nil {
 		t.Fatal(err)
 	}
+
 	pos, total, err := q.Position(ctx, "e", "real")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if pos != 51 || total != 51 {
-		t.Fatalf("expected pos 51 / total 51 after 50 bots ahead, got pos=%d total=%d", pos, total)
+	if pos != 1 {
+		t.Fatalf("simulated bots displaced a waiting visitor: pos=%d", pos)
+	}
+	if total != 51 {
+		t.Fatalf("expected a 51-deep queue, got %d", total)
+	}
+}
+
+func TestSimulateStillPutsACrowdAheadOfLaterArrivals(t *testing.T) {
+	q := newTestQueue(t)
+	ctx := context.Background()
+
+	if _, err := q.Simulate(ctx, "e", 6); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(2 * time.Millisecond)
+	pos, total, err := q.Join(ctx, "e", "latecomer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pos != 7 || total != 7 {
+		t.Fatalf("expected to queue behind 6 bots, got pos=%d total=%d", pos, total)
 	}
 }
 
@@ -100,6 +121,58 @@ func TestAdmitDrainsBotsWithoutMarkingAdmitted(t *testing.T) {
 	}
 	if admitted != 0 {
 		t.Fatalf("bots should not count as admitted, got %d", admitted)
+	}
+}
+
+func TestAdmitDropsTheEventFromTheRegistryWhenDrained(t *testing.T) {
+	q := newTestQueue(t)
+	ctx := context.Background()
+
+	if _, _, err := q.Join(ctx, "e", "a"); err != nil {
+		t.Fatal(err)
+	}
+	events, err := q.ActiveEvents(ctx)
+	if err != nil || len(events) != 1 {
+		t.Fatalf("expected the event registered, got %v (%v)", events, err)
+	}
+
+	if _, err := q.Admit(ctx, "e", 3); err != nil {
+		t.Fatal(err)
+	}
+
+	events, err = q.ActiveEvents(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("drained event should leave the registry, got %v", events)
+	}
+}
+
+func TestAdmitKeepsUnadmittedVisitorsQueued(t *testing.T) {
+	q := newTestQueue(t)
+	ctx := context.Background()
+
+	for _, visitor := range []string{"a", "b", "c", "d", "e"} {
+		if _, _, err := q.Join(ctx, "evt", visitor); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	admitted, err := q.Admit(ctx, "evt", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if admitted != 2 {
+		t.Fatalf("expected 2 admitted, got %d", admitted)
+	}
+
+	pos, total, err := q.Position(ctx, "evt", "c")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pos != 1 || total != 3 {
+		t.Fatalf("c should be front of a 3-deep queue, got pos=%d total=%d", pos, total)
 	}
 }
 

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -13,6 +12,27 @@ const (
 	eventsRegistryKey = "gate:events"
 	botPrefix         = "bot:"
 )
+
+var admitScript = redis.NewScript(`
+local batch = tonumber(ARGV[1])
+local ttl = tonumber(ARGV[2])
+local admitPrefix = ARGV[3]
+local bot = ARGV[4]
+local eventID = ARGV[5]
+local admitted = {}
+local popped = redis.call('ZPOPMIN', KEYS[1], batch)
+for i = 1, #popped, 2 do
+  local member = popped[i]
+  if string.sub(member, 1, string.len(bot)) ~= bot then
+    redis.call('SET', admitPrefix .. member, '1', 'EX', ttl)
+    admitted[#admitted + 1] = member
+  end
+end
+if redis.call('ZCARD', KEYS[1]) == 0 then
+  redis.call('SREM', KEYS[2], eventID)
+end
+return admitted
+`)
 
 var errNotQueued = errors.New("visitor not in queue")
 
@@ -27,8 +47,10 @@ func newQueue(rdb *redis.Client, ttl time.Duration) *Queue {
 
 func queueKey(eventID string) string { return "gate:" + eventID + ":q" }
 
+func admitKeyPrefix(eventID string) string { return "gate:" + eventID + ":adm:" }
+
 func admitKey(eventID, visitorID string) string {
-	return "gate:" + eventID + ":adm:" + visitorID
+	return admitKeyPrefix(eventID) + visitorID
 }
 
 func (q *Queue) Join(ctx context.Context, eventID, visitorID string) (int64, int64, error) {
@@ -68,14 +90,10 @@ func (q *Queue) IsAdmitted(ctx context.Context, eventID, visitorID string) (bool
 
 func (q *Queue) Simulate(ctx context.Context, eventID string, count int) (int64, error) {
 	base := float64(time.Now().UnixMilli())
-	front, err := q.rdb.ZRangeWithScores(ctx, queueKey(eventID), 0, 0).Result()
-	if err == nil && len(front) > 0 {
-		base = front[0].Score
-	}
 	members := make([]redis.Z, 0, count)
 	for i := 0; i < count; i++ {
 		members = append(members, redis.Z{
-			Score:  base - float64(i+1),
+			Score:  base + float64(i)/float64(count+1),
 			Member: botPrefix + randomID(),
 		})
 	}
@@ -89,25 +107,30 @@ func (q *Queue) Simulate(ctx context.Context, eventID string, count int) (int64,
 }
 
 func (q *Queue) Admit(ctx context.Context, eventID string, batch int) (int, error) {
-	popped, err := q.rdb.ZPopMin(ctx, queueKey(eventID), int64(batch)).Result()
+	if batch <= 0 {
+		return 0, nil
+	}
+	result, err := admitScript.Run(
+		ctx,
+		q.rdb,
+		[]string{queueKey(eventID), eventsRegistryKey},
+		batch,
+		int(q.ttl.Seconds()),
+		admitKeyPrefix(eventID),
+		botPrefix,
+		eventID,
+	).Result()
 	if err != nil {
 		return 0, err
 	}
-	admitted := 0
-	for _, entry := range popped {
-		visitorID, _ := entry.Member.(string)
-		if strings.HasPrefix(visitorID, botPrefix) {
-			continue
-		}
-		if err := q.rdb.Set(ctx, admitKey(eventID, visitorID), "1", q.ttl).Err(); err != nil {
-			return admitted, err
-		}
-		admitted++
+	members, ok := result.([]any)
+	if !ok {
+		return 0, nil
 	}
-	if admitted > 0 {
-		admittedTotal.Add(ctx, int64(admitted))
+	if len(members) > 0 {
+		admittedTotal.Add(ctx, int64(len(members)))
 	}
-	return admitted, nil
+	return len(members), nil
 }
 
 func (q *Queue) ActiveEvents(ctx context.Context) ([]string, error) {
