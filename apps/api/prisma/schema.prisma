@@ -324,12 +324,12 @@ model Refund {
   amountSatang     Int          @map("amount_satang")
   status           RefundStatus @default(pending)
   idempotencyKey   String?      @map("idempotency_key")
-  requestedById    String       @map("requested_by_id")
+  requestedById    String?      @map("requested_by_id")
   createdAt        DateTime     @default(now()) @map("created_at")
   settledAt        DateTime?    @map("settled_at")
 
   order       Order    @relation(fields: [orderId], references: [id])
-  requestedBy User     @relation(fields: [requestedById], references: [id])
+  requestedBy User?    @relation(fields: [requestedById], references: [id])
   tickets     Ticket[]
 
   @@unique([orderId, idempotencyKey])

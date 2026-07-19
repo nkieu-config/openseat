@@ -99,16 +99,14 @@ export class RefundsService {
           throw new ConflictException('A ticket was already used or refunded');
         }
 
-        const gaCounts = new Map<string, number>();
+        const restored = new Map<string, number>();
         for (const ticket of order.tickets) {
-          if (ticket.seatId === null) {
-            gaCounts.set(
-              ticket.ticketTypeId,
-              (gaCounts.get(ticket.ticketTypeId) ?? 0) + 1,
-            );
-          }
+          restored.set(
+            ticket.ticketTypeId,
+            (restored.get(ticket.ticketTypeId) ?? 0) + 1,
+          );
         }
-        for (const [ticketTypeId, count] of gaCounts) {
+        for (const [ticketTypeId, count] of restored) {
           await tx.ticketType.update({
             where: { id: ticketTypeId },
             data: { remaining: { increment: count } },
@@ -175,22 +173,46 @@ export class RefundsService {
       throw new NotFoundException('Refund not found');
     }
     await this.access.requireEventRole(refund.order.eventId, userId, 'manager');
-    if (refund.status !== 'failed') {
-      throw new ConflictException('Only a failed refund can be retried');
-    }
     if (!refund.order.payment) {
       throw new ConflictException('This refund has no payment to retry');
     }
-    await this.prisma.refund.update({
-      where: { id: refundId },
+    const reopened = await this.prisma.refund.updateMany({
+      where: { id: refundId, status: 'failed' },
       data: { status: 'pending' },
     });
+    if (reopened.count === 0) {
+      throw new ConflictException('Only a failed refund can be retried');
+    }
     await this.sendMoneyLeg(
       refundId,
       refund.order.payment.providerIntentId,
       refund.amountSatang,
     );
     return this.getById(refundId);
+  }
+
+  async compensateUnfulfilledPayment(input: {
+    orderId: string;
+    amountSatang: number;
+    providerIntentId: string;
+  }): Promise<void> {
+    const { orderId, amountSatang, providerIntentId } = input;
+    const existing = await this.prisma.refund.findFirst({
+      where: { orderId, requestedById: null },
+      select: { id: true },
+    });
+    if (existing) {
+      return;
+    }
+    const refund = await this.prisma.refund.create({
+      data: { orderId, amountSatang, status: 'pending' },
+    });
+    this.logger.error(
+      `Order ${orderId} cannot be fulfilled; returning ${amountSatang} satang as refund ${refund.id}`,
+    );
+    refundsTotal.add(1, { result: 'compensating' });
+    await this.sendMoneyLeg(refund.id, providerIntentId, amountSatang);
+    this.outbox.nudge();
   }
 
   async settleInTx(
@@ -238,11 +260,13 @@ export class RefundsService {
       });
     } catch (error) {
       this.logger.warn(`Refund ${refundId} money leg failed: ${String(error)}`);
-      await this.prisma.refund.update({
-        where: { id: refundId },
+      const failed = await this.prisma.refund.updateMany({
+        where: { id: refundId, status: 'pending' },
         data: { status: 'failed' },
       });
-      refundsTotal.add(1, { result: 'failed' });
+      if (failed.count > 0) {
+        refundsTotal.add(1, { result: 'failed' });
+      }
     }
   }
 }

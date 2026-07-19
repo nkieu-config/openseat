@@ -170,7 +170,7 @@ func (s *server) handleRefund(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json body"})
 		return
 	}
-	intent, errCode := s.store.Refund(r.PathValue("id"), req.AmountSatang)
+	outcome, errCode := s.store.Refund(r.PathValue("id"), req.Reference, req.AmountSatang)
 	switch errCode {
 	case "not_found":
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "payment intent not found"})
@@ -185,21 +185,22 @@ func (s *server) handleRefund(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "refund exceeds amount paid"})
 		return
 	}
-	refundID := newID("re_")
-	s.dispatcher.Send(intent.CallbackURL, Event{
-		ID:           newID("evt_"),
-		Type:         "payment.refunded",
-		IntentID:     intent.ID,
-		OrderID:      intent.OrderID,
-		AmountSatang: req.AmountSatang,
-		RefundID:     refundID,
-		Reference:    req.Reference,
-		CreatedAt:    time.Now().UTC(),
-	})
+	if !outcome.Duplicate {
+		s.dispatcher.Send(outcome.Intent.CallbackURL, Event{
+			ID:           newID("evt_"),
+			Type:         "payment.refunded",
+			IntentID:     outcome.Intent.ID,
+			OrderID:      outcome.Intent.OrderID,
+			AmountSatang: req.AmountSatang,
+			RefundID:     outcome.RefundID,
+			Reference:    req.Reference,
+			CreatedAt:    time.Now().UTC(),
+		})
+	}
 	writeJSON(w, http.StatusCreated, map[string]any{
-		"refundId":       refundID,
+		"refundId":       outcome.RefundID,
 		"status":         "succeeded",
-		"refundedSatang": intent.RefundedSatang,
+		"refundedSatang": outcome.Intent.RefundedSatang,
 	})
 }
 

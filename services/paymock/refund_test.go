@@ -34,14 +34,14 @@ func TestStoreRefundTransitions(t *testing.T) {
 				st.Resolve(intent.ID, tc.status)
 			}
 			if tc.already > 0 {
-				st.Refund(intent.ID, tc.already)
+				st.Refund(intent.ID, "", tc.already)
 			}
-			got, errCode := st.Refund(intent.ID, tc.amount)
+			got, errCode := st.Refund(intent.ID, "", tc.amount)
 			if errCode != tc.wantErr {
 				t.Fatalf("errCode = %q, want %q", errCode, tc.wantErr)
 			}
-			if tc.wantErr == "" && got.RefundedSatang != tc.wantTotal {
-				t.Errorf("RefundedSatang = %d, want %d", got.RefundedSatang, tc.wantTotal)
+			if tc.wantErr == "" && got.Intent.RefundedSatang != tc.wantTotal {
+				t.Errorf("RefundedSatang = %d, want %d", got.Intent.RefundedSatang, tc.wantTotal)
 			}
 			if tc.wantErr != "" {
 				current, _ := st.Get(intent.ID)
@@ -54,8 +54,97 @@ func TestStoreRefundTransitions(t *testing.T) {
 }
 
 func TestStoreRefundUnknownIntent(t *testing.T) {
-	if _, errCode := newStore().Refund("pi_missing", 100); errCode != "not_found" {
+	if _, errCode := newStore().Refund("pi_missing", "", 100); errCode != "not_found" {
 		t.Errorf("errCode = %q, want not_found", errCode)
+	}
+}
+
+func TestStoreRefundDedupesByReference(t *testing.T) {
+	st := newStore()
+	intent := st.Create("order_1", 240000, "THB", "http://cb", "http://ret")
+	st.Resolve(intent.ID, statusSucceeded)
+
+	first, errCode := st.Refund(intent.ID, "rf_1", 90000)
+	if errCode != "" {
+		t.Fatalf("first refund errCode = %q, want none", errCode)
+	}
+	replay, errCode := st.Refund(intent.ID, "rf_1", 90000)
+	if errCode != "" {
+		t.Fatalf("replayed refund errCode = %q, want none", errCode)
+	}
+	if !replay.Duplicate {
+		t.Error("replayed refund was treated as new money movement")
+	}
+	if replay.RefundID != first.RefundID {
+		t.Errorf("replayed refundId = %q, want the original %q", replay.RefundID, first.RefundID)
+	}
+	if replay.Intent.RefundedSatang != 90000 {
+		t.Errorf("RefundedSatang = %d, want 90000 — the replay moved money twice", replay.Intent.RefundedSatang)
+	}
+
+	other, errCode := st.Refund(intent.ID, "rf_2", 90000)
+	if errCode != "" {
+		t.Fatalf("second distinct refund errCode = %q, want none", errCode)
+	}
+	if other.Duplicate || other.RefundID == first.RefundID {
+		t.Error("a distinct reference was deduped against the first refund")
+	}
+	if other.Intent.RefundedSatang != 180000 {
+		t.Errorf("RefundedSatang = %d, want 180000", other.Intent.RefundedSatang)
+	}
+}
+
+func TestHandleRefundReplayDoesNotDispatchAgain(t *testing.T) {
+	events := make(chan Event, 4)
+	callback := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var event Event
+		if err := json.NewDecoder(r.Body).Decode(&event); err == nil {
+			events <- event
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer callback.Close()
+
+	cfg := loadConfig()
+	st := newStore()
+	srv := newServer(cfg, st, testDispatcher(false, []time.Duration{0}))
+	intent := st.Create("order_1", 240000, "THB", callback.URL, "http://ret")
+	st.Resolve(intent.ID, statusSucceeded)
+
+	post := func() map[string]any {
+		req := httptest.NewRequest(http.MethodPost, "/intents/"+intent.ID+"/refunds",
+			strings.NewReader(`{"amountSatang":150000,"reference":"rf_replay"}`))
+		req.Header.Set("Authorization", "Bearer "+cfg.apiKey)
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("status = %d, want 201: %s", rec.Code, rec.Body.String())
+		}
+		var body map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("bad response json: %v", err)
+		}
+		return body
+	}
+
+	first := post()
+	replay := post()
+	if first["refundId"] != replay["refundId"] {
+		t.Errorf("replay refundId = %v, want the original %v", replay["refundId"], first["refundId"])
+	}
+	if replay["refundedSatang"] != float64(150000) {
+		t.Errorf("refundedSatang = %v, want 150000", replay["refundedSatang"])
+	}
+
+	select {
+	case <-events:
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected the first refund to dispatch a webhook")
+	}
+	select {
+	case event := <-events:
+		t.Errorf("replay dispatched a second settlement webhook: %+v", event)
+	case <-time.After(300 * time.Millisecond):
 	}
 }
 

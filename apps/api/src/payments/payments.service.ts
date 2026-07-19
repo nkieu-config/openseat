@@ -21,6 +21,13 @@ export type PaymockWebhookEvent = {
 
 const SIGNATURE_TOLERANCE_SECONDS = 300;
 
+const UNFULFILLABLE_ORDER_STATUSES = ['expired', 'canceled'];
+
+type SucceededOutcome =
+  | { kind: 'ignored' }
+  | { kind: 'paid' }
+  | { kind: 'unfulfillable'; orderId: string; amountSatang: number };
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
@@ -115,7 +122,7 @@ export class PaymentsService {
     }
     let settled = false;
     await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.refund.updateMany({
+      const claimed = await tx.refund.updateMany({
         where: { id: event.reference, status: 'pending' },
         data: {
           status: 'succeeded',
@@ -123,11 +130,15 @@ export class PaymentsService {
           providerRefundId: event.refundId,
         },
       });
-      if (updated.count === 0) {
+      if (claimed.count === 0) {
         return;
       }
+      const refund = await tx.refund.findUniqueOrThrow({
+        where: { id: event.reference },
+        select: { orderId: true, amountSatang: true },
+      });
       settled = true;
-      await this.refunds.settleInTx(tx, event.orderId, event.amountSatang);
+      await this.refunds.settleInTx(tx, refund.orderId, refund.amountSatang);
     });
     if (settled) {
       refundsTotal.add(1, { result: 'succeeded' });
@@ -135,100 +146,136 @@ export class PaymentsService {
   }
 
   private async handleSucceeded(event: PaymockWebhookEvent) {
-    let becamePaid = false;
-    await this.prisma.$transaction(async (tx) => {
-      const paymentUpdated = await tx.payment.updateMany({
-        where: { providerIntentId: event.intentId, status: 'requires_action' },
-        data: { status: 'succeeded' },
-      });
-      if (paymentUpdated.count === 0) {
-        return;
-      }
-      const orderUpdated = await tx.order.updateMany({
-        where: { id: event.orderId, status: 'awaiting_payment' },
-        data: { status: 'paid' },
-      });
-      if (orderUpdated.count === 0) {
-        this.logger.warn(
-          `Payment ${event.intentId} succeeded but order ${event.orderId} was not awaiting payment`,
-        );
-        return;
-      }
-      becamePaid = true;
+    const outcome = await this.prisma.$transaction(
+      async (tx): Promise<SucceededOutcome> => {
+        const payment = await tx.payment.findUnique({
+          where: { providerIntentId: event.intentId },
+          select: { orderId: true, amountSatang: true },
+        });
+        if (!payment) {
+          return { kind: 'ignored' };
+        }
+        const paymentUpdated = await tx.payment.updateMany({
+          where: {
+            providerIntentId: event.intentId,
+            status: 'requires_action',
+          },
+          data: { status: 'succeeded' },
+        });
+        if (paymentUpdated.count === 0) {
+          return { kind: 'ignored' };
+        }
+        const orderUpdated = await tx.order.updateMany({
+          where: { id: payment.orderId, status: 'awaiting_payment' },
+          data: { status: 'paid' },
+        });
+        if (orderUpdated.count === 0) {
+          const stale = await tx.order.findUnique({
+            where: { id: payment.orderId },
+            select: { status: true },
+          });
+          this.logger.error(
+            `Payment ${event.intentId} captured ${payment.amountSatang} satang but order ${payment.orderId} is ${stale?.status ?? 'missing'}, not awaiting payment`,
+          );
+          if (!stale || !UNFULFILLABLE_ORDER_STATUSES.includes(stale.status)) {
+            return { kind: 'ignored' };
+          }
+          return {
+            kind: 'unfulfillable',
+            orderId: payment.orderId,
+            amountSatang: payment.amountSatang,
+          };
+        }
 
-      const order = await tx.order.findUniqueOrThrow({
-        where: { id: event.orderId },
-        include: { items: { include: { ticketType: true } } },
-      });
-      const consumedHolds = await tx.$queryRaw<{ seat_id: string }[]>`
+        const order = await tx.order.findUniqueOrThrow({
+          where: { id: payment.orderId },
+          include: { items: { include: { ticketType: true } } },
+        });
+        const consumedHolds = await tx.$queryRaw<{ seat_id: string }[]>`
         DELETE FROM holds WHERE order_id = ${order.id} RETURNING seat_id`;
-      const seatIds = consumedHolds.map((hold) => hold.seat_id);
-      const seats =
-        seatIds.length > 0
-          ? await tx.seat.findMany({
-              where: { id: { in: seatIds } },
-              select: { id: true, ticketTypeId: true },
-            })
-          : [];
-      const tierCounts = new Map<string, number>();
-      for (const seat of seats) {
-        tierCounts.set(
-          seat.ticketTypeId,
-          (tierCounts.get(seat.ticketTypeId) ?? 0) + 1,
-        );
-      }
-      for (const [ticketTypeId, count] of tierCounts) {
-        await tx.ticketType.update({
-          where: { id: ticketTypeId },
-          data: { remaining: { decrement: count } },
-        });
-      }
+        const seatIds = consumedHolds.map((hold) => hold.seat_id);
+        const seats =
+          seatIds.length > 0
+            ? await tx.seat.findMany({
+                where: { id: { in: seatIds } },
+                select: { id: true, ticketTypeId: true },
+              })
+            : [];
+        const tierCounts = new Map<string, number>();
+        for (const seat of seats) {
+          tierCounts.set(
+            seat.ticketTypeId,
+            (tierCounts.get(seat.ticketTypeId) ?? 0) + 1,
+          );
+        }
+        for (const [ticketTypeId, count] of tierCounts) {
+          await tx.ticketType.update({
+            where: { id: ticketTypeId },
+            data: { remaining: { decrement: count } },
+          });
+        }
 
-      await tx.ticket.createMany({
-        data: [
-          ...order.items
-            .filter((item) => item.ticketType.kind === 'ga')
-            .flatMap((item) =>
-              Array.from({ length: item.quantity }, () => ({
-                orderId: order.id,
-                eventId: order.eventId,
-                ticketTypeId: item.ticketTypeId,
-                attendeeEmail: order.buyerEmail,
-                attendeeName: order.buyerName,
-                qrToken: this.orders.newQrToken(),
-              })),
-            ),
-          ...seats.map((seat) => ({
-            orderId: order.id,
+        await tx.ticket.createMany({
+          data: [
+            ...order.items
+              .filter((item) => item.ticketType.kind === 'ga')
+              .flatMap((item) =>
+                Array.from({ length: item.quantity }, () => ({
+                  orderId: order.id,
+                  eventId: order.eventId,
+                  ticketTypeId: item.ticketTypeId,
+                  attendeeEmail: order.buyerEmail,
+                  attendeeName: order.buyerName,
+                  qrToken: this.orders.newQrToken(),
+                })),
+              ),
+            ...seats.map((seat) => ({
+              orderId: order.id,
+              eventId: order.eventId,
+              ticketTypeId: seat.ticketTypeId,
+              seatId: seat.id,
+              attendeeEmail: order.buyerEmail,
+              attendeeName: order.buyerName,
+              qrToken: this.orders.newQrToken(),
+            })),
+          ],
+        });
+
+        await this.outbox.writeInTx(tx, 'ticket.issued', { orderId: order.id });
+        await this.outbox.writeInTx(tx, 'order.updated', {
+          orderId: order.id,
+          status: 'paid',
+        });
+        if (seatIds.length > 0) {
+          await this.outbox.writeInTx(tx, 'seats.sold', {
             eventId: order.eventId,
-            ticketTypeId: seat.ticketTypeId,
-            seatId: seat.id,
-            attendeeEmail: order.buyerEmail,
-            attendeeName: order.buyerName,
-            qrToken: this.orders.newQrToken(),
-          })),
-        ],
-      });
-
-      await this.outbox.writeInTx(tx, 'ticket.issued', { orderId: order.id });
-      await this.outbox.writeInTx(tx, 'order.updated', {
-        orderId: order.id,
-        status: 'paid',
-      });
-      if (seatIds.length > 0) {
-        await this.outbox.writeInTx(tx, 'seats.sold', {
-          eventId: order.eventId,
-          seatIds,
-        });
-      }
-    });
-    if (becamePaid) {
+            seatIds,
+          });
+        }
+        return { kind: 'paid' };
+      },
+    );
+    if (outcome.kind === 'paid') {
       ordersPaid.add(1);
+    }
+    if (outcome.kind === 'unfulfillable') {
+      await this.refunds.compensateUnfulfilledPayment({
+        orderId: outcome.orderId,
+        amountSatang: outcome.amountSatang,
+        providerIntentId: event.intentId,
+      });
     }
   }
 
   private async handleFailed(event: PaymockWebhookEvent) {
     await this.prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.findUnique({
+        where: { providerIntentId: event.intentId },
+        select: { orderId: true },
+      });
+      if (!payment) {
+        return;
+      }
       const paymentUpdated = await tx.payment.updateMany({
         where: { providerIntentId: event.intentId, status: 'requires_action' },
         data: { status: 'failed' },
@@ -238,7 +285,7 @@ export class PaymentsService {
       }
       await this.orders.releaseOrderInventoryInTx(
         tx,
-        event.orderId,
+        payment.orderId,
         'canceled',
       );
     });

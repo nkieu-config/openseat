@@ -43,10 +43,23 @@ describe('Payments (e2e)', () => {
   let paidGaTypeId: string;
   let seatIds: string[];
   let intentCounter = 0;
+  let refundCalls = 0;
   const organizerEmail = `payments-e2e-${process.pid}-${Date.now()}@example.com`;
 
   beforeAll(async () => {
     intentServer = createServer((req, res) => {
+      if (req.url?.endsWith('/refunds')) {
+        refundCalls += 1;
+        res.writeHead(201, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            refundId: `re_stub_${refundCalls}`,
+            status: 'succeeded',
+            refundedSatang: 0,
+          }),
+        );
+        return;
+      }
       intentCounter += 1;
       res.writeHead(201, { 'Content-Type': 'application/json' });
       res.end(
@@ -138,6 +151,7 @@ describe('Payments (e2e)', () => {
     await prisma.webhookEvent.deleteMany({});
     await prisma.payment.deleteMany({ where: { order: { eventId } } });
     await prisma.ticket.deleteMany({ where: { eventId } });
+    await prisma.refund.deleteMany({ where: { order: { eventId } } });
     await prisma.order.deleteMany({ where: { eventId } });
     await prisma.event.deleteMany({ where: { id: eventId } });
     await prisma.user.deleteMany({ where: { email: organizerEmail } });
@@ -302,7 +316,7 @@ describe('Payments (e2e)', () => {
     expect(tickets).toBe(0);
   });
 
-  it('expires an unpaid order, restores inventory, and ignores late success', async () => {
+  it('expires an unpaid order, restores inventory, and refunds a late success', async () => {
     const before = await prisma.ticketType.findUniqueOrThrow({
       where: { id: paidGaTypeId },
     });
@@ -337,6 +351,13 @@ describe('Payments (e2e)', () => {
     expect(stillExpired.status).toBe('expired');
     const tickets = await prisma.ticket.count({ where: { orderId: order.id } });
     expect(tickets).toBe(0);
+
+    const compensation = await prisma.refund.findFirstOrThrow({
+      where: { orderId: order.id },
+    });
+    expect(compensation.requestedById).toBeNull();
+    expect(compensation.amountSatang).toBe(50_000);
+    expect(compensation.providerRefundId).not.toBeNull();
   });
 
   it('acknowledges an unknown event type without cancelling the order', async () => {

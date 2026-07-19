@@ -26,12 +26,22 @@ type Intent struct {
 }
 
 type store struct {
-	mu      sync.RWMutex
-	intents map[string]*Intent
+	mu           sync.RWMutex
+	intents      map[string]*Intent
+	refundsByRef map[string]string
+}
+
+type refundOutcome struct {
+	Intent    Intent
+	RefundID  string
+	Duplicate bool
 }
 
 func newStore() *store {
-	return &store{intents: make(map[string]*Intent)}
+	return &store{
+		intents:      make(map[string]*Intent),
+		refundsByRef: make(map[string]string),
+	}
 }
 
 func newID(prefix string) string {
@@ -83,22 +93,31 @@ func (s *store) Resolve(id, status string) (Intent, string) {
 	return *intent, ""
 }
 
-func (s *store) Refund(id string, amountSatang int64) (Intent, string) {
+func (s *store) Refund(id, reference string, amountSatang int64) (refundOutcome, string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	intent, ok := s.intents[id]
 	if !ok {
-		return Intent{}, "not_found"
+		return refundOutcome{}, "not_found"
+	}
+	if reference != "" {
+		if refundID, seen := s.refundsByRef[reference]; seen {
+			return refundOutcome{Intent: *intent, RefundID: refundID, Duplicate: true}, ""
+		}
 	}
 	if amountSatang <= 0 {
-		return *intent, "invalid_amount"
+		return refundOutcome{Intent: *intent}, "invalid_amount"
 	}
 	if intent.Status != statusSucceeded {
-		return *intent, "not_succeeded"
+		return refundOutcome{Intent: *intent}, "not_succeeded"
 	}
 	if intent.RefundedSatang+amountSatang > intent.AmountSatang {
-		return *intent, "over_refund"
+		return refundOutcome{Intent: *intent}, "over_refund"
 	}
 	intent.RefundedSatang += amountSatang
-	return *intent, ""
+	refundID := newID("re_")
+	if reference != "" {
+		s.refundsByRef[reference] = refundID
+	}
+	return refundOutcome{Intent: *intent, RefundID: refundID}, ""
 }
