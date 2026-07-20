@@ -237,6 +237,61 @@ describe('Orders (e2e)', () => {
     expect(final.remaining).toBeGreaterThanOrEqual(0);
   });
 
+  it('rejects a quantity edit on a seated tier — the seat map owns capacity', async () => {
+    const createRes = await request(app.getHttpServer())
+      .post('/api/events')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        title: 'Seated Capacity Test',
+        venueName: 'Test Hall',
+        startsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        ticketTypes: [{ name: 'GA', quantity: 5, priceSatang: 0 }],
+      })
+      .expect(201);
+    const event = createRes.body as EventResponse;
+    createdEventIds.push(event.id);
+
+    await request(app.getHttpServer())
+      .post(`/api/events/${event.id}/seat-map`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        sections: [
+          {
+            name: 'Stalls',
+            rows: 2,
+            cols: 5,
+            tierName: 'Stalls',
+            priceSatang: 90_000,
+          },
+        ],
+      })
+      .expect(201);
+
+    const seated = await prisma.ticketType.findFirstOrThrow({
+      where: { eventId: event.id, kind: 'seated' },
+    });
+    expect(seated.quantity).toBe(10);
+
+    await request(app.getHttpServer())
+      .patch(`/api/events/${event.id}/ticket-types/${seated.id}`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ quantity: 4 })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch(`/api/events/${event.id}/ticket-types/${seated.id}`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ name: 'Renamed Stalls' })
+      .expect(200);
+
+    const unchanged = await prisma.ticketType.findUniqueOrThrow({
+      where: { id: seated.id },
+    });
+    expect(unchanged.quantity).toBe(10);
+    expect(unchanged.remaining).toBe(10);
+    expect(unchanged.name).toBe('Renamed Stalls');
+  });
+
   it('keeps the database from storing a negative remaining', async () => {
     const event = await createPublishedEvent(5);
     const ticketTypeId = event.ticketTypes[0].id;

@@ -167,13 +167,21 @@ export class EventsService {
       }
       let remainingDelta = 0;
       if (dto.quantity !== undefined) {
-        const sold = ticketType.quantity - ticketType.remaining;
-        if (dto.quantity < sold) {
-          throw new BadRequestException(
-            `Quantity cannot go below the ${sold} tickets already issued`,
-          );
+        if (ticketType.kind === 'seated') {
+          if (dto.quantity !== ticketType.quantity) {
+            throw new BadRequestException(
+              'Seated capacity is set by the seat map — edit the map to change it',
+            );
+          }
+        } else {
+          const sold = ticketType.quantity - ticketType.remaining;
+          if (dto.quantity < sold) {
+            throw new BadRequestException(
+              `Quantity cannot go below the ${sold} tickets already issued`,
+            );
+          }
+          remainingDelta = dto.quantity - ticketType.quantity;
         }
-        remainingDelta = dto.quantity - ticketType.quantity;
       }
       if (remainingDelta !== 0) {
         const applied = await tx.$executeRaw`
