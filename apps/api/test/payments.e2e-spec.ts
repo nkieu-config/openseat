@@ -249,6 +249,40 @@ describe('Payments (e2e)', () => {
     expect(tickets).toBe(1);
   });
 
+  it('reprocesses a recorded-but-unprocessed event instead of dropping it', async () => {
+    const order = await createPaidGaOrder();
+    const payment = await prisma.payment.findUniqueOrThrow({
+      where: { orderId: order.id },
+    });
+    const webhookId = `evt_stuck_${order.id}`;
+
+    await prisma.webhookEvent.create({
+      data: { providerEventId: webhookId, type: 'payment.succeeded' },
+    });
+
+    const res = await sendWebhook({
+      id: webhookId,
+      type: 'payment.succeeded',
+      intentId: payment.providerIntentId,
+      orderId: order.id,
+      amountSatang: 50_000,
+      createdAt: new Date().toISOString(),
+    });
+    expect((res.body as { duplicate?: boolean }).duplicate).toBeUndefined();
+
+    const paid = await prisma.order.findUniqueOrThrow({
+      where: { id: order.id },
+      include: { tickets: true },
+    });
+    expect(paid.status).toBe('paid');
+    expect(paid.tickets).toHaveLength(1);
+
+    const recorded = await prisma.webhookEvent.findUniqueOrThrow({
+      where: { providerEventId: webhookId },
+    });
+    expect(recorded.processedAt).not.toBeNull();
+  });
+
   it('rejects bad signatures and stale timestamps', async () => {
     const body = JSON.stringify({ id: 'evt_bad', type: 'payment.succeeded' });
     await request(app.getHttpServer())

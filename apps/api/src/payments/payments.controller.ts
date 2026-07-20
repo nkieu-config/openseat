@@ -33,8 +33,8 @@ export class PaymentsController {
     if (!event.id || !event.intentId || !event.orderId) {
       throw new BadRequestException('Malformed webhook event');
     }
-    const fresh = await this.payments.recordEvent(event);
-    if (!fresh) {
+    const record = await this.payments.recordEvent(event);
+    if (record === 'processed') {
       return { received: true, duplicate: true };
     }
     await this.payments.processEvent(event);

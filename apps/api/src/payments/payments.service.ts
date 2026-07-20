@@ -28,6 +28,8 @@ type SucceededOutcome =
   | { kind: 'paid' }
   | { kind: 'unfulfillable'; orderId: string; amountSatang: number };
 
+export type RecordResult = 'fresh' | 'unprocessed' | 'processed';
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
@@ -74,22 +76,33 @@ export class PaymentsService {
     }
   }
 
-  async recordEvent(event: PaymockWebhookEvent): Promise<boolean> {
+  async recordEvent(event: PaymockWebhookEvent): Promise<RecordResult> {
     try {
       await this.prisma.webhookEvent.create({
         data: { providerEventId: event.id, type: event.type },
       });
-      return true;
+      return 'fresh';
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
         webhookEvents.add(1, { outcome: 'duplicate' });
-        return false;
+        const existing = await this.prisma.webhookEvent.findUnique({
+          where: { providerEventId: event.id },
+          select: { processedAt: true },
+        });
+        return existing?.processedAt ? 'processed' : 'unprocessed';
       }
       throw error;
     }
+  }
+
+  private async markProcessed(eventId: string): Promise<void> {
+    await this.prisma.webhookEvent.updateMany({
+      where: { providerEventId: eventId },
+      data: { processedAt: new Date() },
+    });
   }
 
   async processEvent(event: PaymockWebhookEvent): Promise<void> {
@@ -106,12 +119,10 @@ export class PaymentsService {
       default:
         this.logger.warn(`ignoring unknown webhook type: ${event.type}`);
         webhookEvents.add(1, { outcome: 'ignored' });
+        await this.markProcessed(event.id);
         return;
     }
-    await this.prisma.webhookEvent.updateMany({
-      where: { providerEventId: event.id },
-      data: { processedAt: new Date() },
-    });
+    await this.markProcessed(event.id);
     webhookEvents.add(1, { outcome: 'processed' });
   }
 
