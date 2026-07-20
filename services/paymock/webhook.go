@@ -39,6 +39,8 @@ type dispatcher struct {
 	logger    *log.Logger
 	now       func() time.Time
 	quit      chan struct{}
+	mu        sync.Mutex
+	closed    bool
 	inFlight  sync.WaitGroup
 }
 
@@ -55,7 +57,13 @@ func newDispatcher(secret string, duplicate bool, backoff []time.Duration, logge
 }
 
 func (d *dispatcher) Send(callbackURL string, event Event) {
+	d.mu.Lock()
+	if d.closed {
+		d.mu.Unlock()
+		return
+	}
 	d.inFlight.Add(1)
+	d.mu.Unlock()
 	go func() {
 		defer d.inFlight.Done()
 		d.Deliver(callbackURL, event)
@@ -77,7 +85,14 @@ func (d *dispatcher) wait(delay time.Duration) bool {
 }
 
 func (d *dispatcher) Close(timeout time.Duration) {
+	d.mu.Lock()
+	if d.closed {
+		d.mu.Unlock()
+		return
+	}
+	d.closed = true
 	close(d.quit)
+	d.mu.Unlock()
 	drained := make(chan struct{})
 	go func() {
 		d.inFlight.Wait()
