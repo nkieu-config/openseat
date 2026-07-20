@@ -224,6 +224,7 @@ model Order {
   @@unique([eventId, idempotencyKey])
   @@index([buyerUserId])
   @@index([buyerEmail])
+  @@index([status, expiresAt])
   @@map("orders")
 }
 
