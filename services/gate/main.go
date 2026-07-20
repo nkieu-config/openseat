@@ -121,17 +121,50 @@ func (s *server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+func validEventID(id string) bool {
+	if id == "" || len(id) > 128 {
+		return false
+	}
+	for _, r := range id {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_':
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+func validVisitorID(id string) bool {
+	if id == "" || len(id) > 128 {
+		return false
+	}
+	for _, r := range id {
+		if r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	return true
+}
+
 type joinRequest struct {
 	VisitorID string `json:"visitorId"`
 }
 
 func (s *server) handleJoin(w http.ResponseWriter, r *http.Request) {
 	eventID := r.PathValue("eventId")
+	if !validEventID(eventID) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid event id"})
+		return
+	}
 	var req joinRequest
 	_ = json.NewDecoder(r.Body).Decode(&req)
 	visitor := req.VisitorID
 	if visitor == "" {
 		visitor = "v:" + randomID()
+	} else if !validVisitorID(visitor) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid visitor id"})
+		return
 	}
 	ctx := r.Context()
 
@@ -162,6 +195,10 @@ type simulateRequest struct {
 
 func (s *server) handleSimulate(w http.ResponseWriter, r *http.Request) {
 	eventID := r.PathValue("eventId")
+	if !validEventID(eventID) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid event id"})
+		return
+	}
 	var req simulateRequest
 	_ = json.NewDecoder(r.Body).Decode(&req)
 	if req.Count <= 0 {
@@ -180,9 +217,13 @@ func (s *server) handleSimulate(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) handleStream(w http.ResponseWriter, r *http.Request) {
 	eventID := r.PathValue("eventId")
+	if !validEventID(eventID) {
+		http.Error(w, "invalid event id", http.StatusBadRequest)
+		return
+	}
 	visitor := r.URL.Query().Get("visitor")
-	if visitor == "" {
-		http.Error(w, "visitor query param required", http.StatusBadRequest)
+	if visitor == "" || !validVisitorID(visitor) {
+		http.Error(w, "valid visitor query param required", http.StatusBadRequest)
 		return
 	}
 	flusher, ok := w.(http.Flusher)

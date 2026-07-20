@@ -11,6 +11,7 @@ import (
 const (
 	eventsRegistryKey = "gate:events"
 	botPrefix         = "bot:"
+	admittedMarker    = "1"
 )
 
 var admitScript = redis.NewScript(`
@@ -84,8 +85,14 @@ func (q *Queue) Position(ctx context.Context, eventID, visitorID string) (int64,
 }
 
 func (q *Queue) IsAdmitted(ctx context.Context, eventID, visitorID string) (bool, error) {
-	count, err := q.rdb.Exists(ctx, admitKey(eventID, visitorID)).Result()
-	return count > 0, err
+	value, err := q.rdb.Get(ctx, admitKey(eventID, visitorID)).Result()
+	if errors.Is(err, redis.Nil) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return value == admittedMarker, nil
 }
 
 func (q *Queue) Simulate(ctx context.Context, eventID string, count int) (int64, error) {
