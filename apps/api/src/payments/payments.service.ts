@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
+import { UNFULFILLABLE_ORDER_STATUSES } from '../orders/order-status';
 import { OrdersService } from '../orders/orders.service';
 import { OutboxService } from '../outbox/outbox.service';
 import { PaymockClientService } from '../paymock-client/paymock-client.service';
@@ -20,8 +21,6 @@ export type PaymockWebhookEvent = {
 };
 
 const SIGNATURE_TOLERANCE_SECONDS = 300;
-
-const UNFULFILLABLE_ORDER_STATUSES = ['expired', 'canceled'];
 
 type SucceededOutcome =
   | { kind: 'ignored' }

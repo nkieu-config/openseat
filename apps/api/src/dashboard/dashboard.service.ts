@@ -12,16 +12,10 @@ import {
   TierStat,
   TimelineBucket,
 } from './dashboard.models';
-import { OrderStatus } from '../generated/prisma/client';
+import { PAID_ORDER_STATUSES } from '../orders/order-status';
 
 const DAY_MS = 86_400_000;
 const MAX_TIMELINE_DAYS = 45;
-
-const PAID_ORDER_STATUSES: OrderStatus[] = [
-  'paid',
-  'partially_refunded',
-  'refunded',
-];
 
 function startOfDayUtc(date: Date): Date {
   return new Date(
