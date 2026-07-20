@@ -7,7 +7,7 @@ A ~3.5-minute screen recording that shows the product working, not slides. Recor
 ## Shot 1 — The promise (0:00–0:15)
 
 - **Do:** Land on the home page. Hover the "Every seat, exactly once." headline. Toggle the language switcher in the footer to Thai, then back.
-- **Say:** "OpenSeat is open ticketing built to survive on-sale rushes — and it's fully bilingual."
+- **Say:** "OpenSeat is open ticketing built to survive on-sale rushes — the landing and waiting-room flows are bilingual, English and Thai."
 
 ## Shot 2 — Reserved seating, live (0:15–0:45)
 

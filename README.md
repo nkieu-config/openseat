@@ -26,8 +26,8 @@ Every technology choice has a written rationale with trade-offs — see [docs/ad
 - **No double-selling, proven two ways** — an API race test puts 50 buyers on one seat and exactly one wins; a [two-browser Playwright journey](tests/e2e/specs/seat-race.spec.ts) shows the loser's seat turn red, not crash.
 - **The surge is load-tested** — the Go waiting room absorbs [~13,000 joins/second at p95 < 20ms with zero errors](docs/load-tests/gate-report.md).
 - **One request, traced across languages** — a browser fetch parents a span inside the Go gate over W3C traceparent ([the trace](docs/observability/trace-web-to-gate.png), [dashboard](docs/observability/dashboard.png)).
-- **The whole demo runs in CI** — 73 API integration tests plus 9 browser journeys on every pull request.
-- **Every decision is written down** — 12 [ADRs](docs/adr) and a spec per milestone, each ending deployable.
+- **The whole demo runs in CI** — 80+ API integration tests plus 9 browser journeys on every pull request.
+- **Every decision is written down** — 13 [ADRs](docs/adr) and a spec per milestone, each ending deployable.
 
 ## Architecture at a glance
 
@@ -84,7 +84,7 @@ The first act — *build*:
 | **M3 — Payments** ✅ | PayMock payment simulator in Go (signed + duplicated webhooks), awaiting_payment state machine with 15-minute expiry, transactional outbox for email/realtime effects, webhook dedup proven by e2e |
 | **M4 — Organizer console** ✅ | "Backstage Console" design language, sales analytics + timeline, occupancy heatmap, attendee CSV export, read-only GraphQL layer, QR check-in scanner (concurrent double-scan proven) |
 | **M5 — Waiting room** ✅ | Go **Gate** service (Redis queue, SSE positions, token-bucket admitter), stateless admission JWTs the API verifies itself, k6 load report (~13k joins/s), Simulate Crowd |
-| **M6 — Seat-map editor** ✅ | Drag-and-drop seat-map editor (hand-built SVG, undo/redo), EN/TH i18n on public pages, light-theme audit, [AWS production doc](docs/aws-production.md), [demo video script](docs/demo-script.md) |
+| **M6 — Seat-map editor** ✅ | Drag-and-drop seat-map editor (hand-built SVG, undo/redo), EN/TH i18n on the landing and waiting-room flows, light-theme audit, [AWS production doc](docs/aws-production.md), [demo video script](docs/demo-script.md) |
 
 <img src="docs/media/waiting-room.png" width="600" alt="The drop-mode waiting room showing a buyer's live queue position and the Simulate Crowd control">
 

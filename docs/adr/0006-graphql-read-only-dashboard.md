@@ -10,7 +10,7 @@ Meanwhile the write side — orders, holds, check-in — already has hard-won RE
 
 ## Decision
 
-Add **GraphQL for organizer reads only**, mounted at `/api/graphql` behind the same-origin proxy (ADR 0004). It exposes exactly three queries — `organizerEvents`, `eventDashboard(eventId)`, `eventAttendees(eventId)` — behind a JWT guard that reuses the existing passport strategy through a GraphQL-context `getRequest`, with per-event ownership enforced in the resolver. There are **no mutations and no subscriptions**: every state change stays on REST, realtime stays on Socket.IO.
+Add **GraphQL for organizer reads only**, mounted at `/api/graphql` behind the same-origin proxy (ADR 0004). The invariant is **reads only — no mutations, no subscriptions**: every state change stays on REST, realtime stays on Socket.IO. It opened with `organizerEvents`, `eventDashboard(eventId)`, and `eventAttendees(eventId)`, and later milestones added more read queries under the same rule (`eventOrders` in ADR 0011, `eventSummary`/`myRole` in ADR 0012). All of them sit behind a JWT guard that reuses the existing passport strategy through a GraphQL-context `getRequest`, with per-event access enforced in the resolver.
 
 The schema is code-first (`@nestjs/graphql` + Apollo), emitted to `apps/api/src/schema.gql`, so the web app types its queries against a committed contract — the GraphQL mirror of the OpenAPI → openapi-typescript pipeline the REST client already uses.
 
