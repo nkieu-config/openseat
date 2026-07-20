@@ -170,7 +170,7 @@ function OrderView() {
           </p>
           {order.expiresAt ? (
             <p className="text-sm text-muted-foreground">
-              Your seats and tickets are reserved for{" "}
+              Your seats and tickets are held for{" "}
               <PaymentCountdown expiresAt={order.expiresAt} /> — after that the order expires and
               they go back on sale.
             </p>
