@@ -6,13 +6,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { AccessService } from '../access/access.service';
+import { REFUNDABLE_ORDER_STATUSES } from '../orders/order-status';
 import { OutboxService } from '../outbox/outbox.service';
 import { PaymockClientService } from '../paymock-client/paymock-client.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../generated/prisma/client';
 import { refundsTotal } from '../telemetry/metrics';
 
-const REFUNDABLE_ORDER_STATUSES = ['paid', 'partially_refunded'];
+const SYSTEM_COMPENSATION_KEY = 'system:compensation';
 
 const REFUND_INCLUDE = {
   tickets: { select: { id: true } },
@@ -204,9 +205,26 @@ export class RefundsService {
     if (existing) {
       return;
     }
-    const refund = await this.prisma.refund.create({
-      data: { orderId, amountSatang, status: 'pending' },
-    });
+    let refund: { id: string };
+    try {
+      refund = await this.prisma.refund.create({
+        data: {
+          orderId,
+          amountSatang,
+          status: 'pending',
+          idempotencyKey: SYSTEM_COMPENSATION_KEY,
+        },
+        select: { id: true },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return;
+      }
+      throw error;
+    }
     this.logger.error(
       `Order ${orderId} cannot be fulfilled; returning ${amountSatang} satang as refund ${refund.id}`,
     );
