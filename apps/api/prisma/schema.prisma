@@ -185,7 +185,6 @@ model Hold {
 }
 
 enum OrderStatus {
-  pending
   awaiting_payment
   paid
   expired
@@ -206,7 +205,7 @@ model Order {
   buyerUserId    String?     @map("buyer_user_id")
   buyerEmail     String      @map("buyer_email")
   buyerName      String      @map("buyer_name")
-  status         OrderStatus @default(pending)
+  status         OrderStatus @default(awaiting_payment)
   totalSatang    Int         @default(0) @map("total_satang")
   refundedSatang Int         @default(0) @map("refunded_satang")
   idempotencyKey String?     @map("idempotency_key")

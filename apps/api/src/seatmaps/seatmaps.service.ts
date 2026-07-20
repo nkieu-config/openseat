@@ -18,8 +18,8 @@ export class SeatmapsService {
     private readonly access: AccessService,
   ) {}
 
-  async create(eventId: string, organizerId: string, dto: CreateSeatMapDto) {
-    await this.access.requireEventRole(eventId, organizerId, 'manager');
+  async create(eventId: string, actingUserId: string, dto: CreateSeatMapDto) {
+    await this.access.requireEventRole(eventId, actingUserId, 'manager');
     const existingSeatMap = await this.prisma.seatMap.findUnique({
       where: { eventId },
       select: { id: true },

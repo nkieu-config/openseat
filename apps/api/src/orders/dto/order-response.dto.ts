@@ -35,7 +35,6 @@ export class OrderPaymentDto {
 export class OrderDetailDto {
   id: string;
   status:
-    | 'pending'
     | 'awaiting_payment'
     | 'paid'
     | 'expired'

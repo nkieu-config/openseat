@@ -39,10 +39,10 @@ export class CheckinService {
 
   async checkIn(
     eventId: string,
-    organizerId: string,
+    actingUserId: string,
     qrToken: string,
   ): Promise<CheckinResult> {
-    await this.access.requireEventRole(eventId, organizerId, 'staff');
+    await this.access.requireEventRole(eventId, actingUserId, 'staff');
     const ticket = await this.prisma.ticket.findUnique({
       where: { qrToken },
       include: ATTENDEE_INCLUDE,
@@ -77,8 +77,8 @@ export class CheckinService {
     };
   }
 
-  async attendeesCsv(eventId: string, organizerId: string): Promise<string> {
-    await this.access.requireEventRole(eventId, organizerId, 'manager');
+  async attendeesCsv(eventId: string, actingUserId: string): Promise<string> {
+    await this.access.requireEventRole(eventId, actingUserId, 'manager');
     const tickets = await this.prisma.ticket.findMany({
       where: { eventId, status: { not: 'void' } },
       orderBy: [{ ticketType: { name: 'asc' } }, { createdAt: 'asc' }],
