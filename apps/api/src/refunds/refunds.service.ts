@@ -220,19 +220,26 @@ export class RefundsService {
     orderId: string,
     amountSatang: number,
   ) {
+    const order = await tx.order.findUniqueOrThrow({
+      where: { id: orderId },
+      select: { status: true },
+    });
     await tx.order.update({
       where: { id: orderId },
       data: { refundedSatang: { increment: amountSatang } },
     });
+    await this.outbox.writeInTx(tx, 'order.refunded', {
+      orderId,
+      amountSatang,
+    });
+    if (!REFUNDABLE_ORDER_STATUSES.includes(order.status)) {
+      return;
+    }
     const liveTickets = await tx.ticket.count({
       where: { orderId, status: { not: 'void' } },
     });
     const status = liveTickets === 0 ? 'refunded' : 'partially_refunded';
     await tx.order.update({ where: { id: orderId }, data: { status } });
-    await this.outbox.writeInTx(tx, 'order.refunded', {
-      orderId,
-      amountSatang,
-    });
     await this.outbox.writeInTx(tx, 'order.updated', { orderId, status });
   }
 

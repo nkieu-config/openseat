@@ -392,6 +392,26 @@ describe('Payments (e2e)', () => {
     expect(compensation.requestedById).toBeNull();
     expect(compensation.amountSatang).toBe(50_000);
     expect(compensation.providerRefundId).not.toBeNull();
+
+    await sendWebhook({
+      id: `evt_comp_settle_${order.id}`,
+      type: 'payment.refunded',
+      intentId: payment.providerIntentId,
+      orderId: order.id,
+      amountSatang: 50_000,
+      refundId: 're_comp_settle',
+      reference: compensation.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    const afterSettle = await prisma.order.findUniqueOrThrow({
+      where: { id: order.id },
+    });
+    expect(afterSettle.status).toBe('expired');
+    const settledRefund = await prisma.refund.findUniqueOrThrow({
+      where: { id: compensation.id },
+    });
+    expect(settledRefund.status).toBe('succeeded');
   });
 
   it('acknowledges an unknown event type without cancelling the order', async () => {
