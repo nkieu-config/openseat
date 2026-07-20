@@ -15,11 +15,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { api, apiErrorMessage } from '@/lib/api';
 import { getHoldKey } from '@/lib/hold-key';
 import { createEventSocket } from '@/lib/realtime';
-
-const CELL = 34;
-const GAP = 8;
-const PAD = 44;
-const STEP = CELL + GAP;
+import {
+  CELL,
+  PAD,
+  mapHeight,
+  mapWidth,
+  seatX,
+  seatY,
+  useSeatMapViewport,
+} from '@/lib/seat-map-viewport';
 
 const seatFill: Record<string, string> = {
   available: 'fill-seat-available',
@@ -63,16 +67,13 @@ export function SeatPicker({ eventId }: { eventId: string }) {
   const router = useRouter();
   const [map, setMap] = useState<SeatMapData | null>(null);
   const [failed, setFailed] = useState(false);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const viewport = useSeatMapViewport();
   const [buyerName, setBuyerName] = useState('');
   const [buyerEmail, setBuyerEmail] = useState('');
   const [claiming, setClaiming] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const holdKey = useMemo(() => getHoldKey(), []);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const dragState = useRef<{ x: number; y: number; moved: boolean } | null>(null);
-  const suppressClick = useRef(false);
   const idempotencyKey = useRef<string>(crypto.randomUUID());
   const earliestExpiryRef = useRef<number | null>(null);
 
@@ -155,16 +156,11 @@ export function SeatPicker({ eventId }: { eventId: string }) {
       return;
     }
     const element = containerRef.current;
-    if (!element || element.clientWidth === 0) {
+    if (!element) {
       return;
     }
-    const mapWidth = PAD * 2 + map.meta.maxCols * STEP - GAP;
-    const seatPx = (element.clientWidth * CELL) / mapWidth;
-    if (seatPx < 34) {
-      const target = Math.min(2.5, 40 / seatPx);
-      setZoom((current) => (current === 1 && target > 1 ? target : current));
-    }
-  }, [map]);
+    viewport.fitToWidth(element.clientWidth, map.meta.maxCols);
+  }, [map, viewport]);
 
   useEffect(() => {
     if (mySeats.length === 0) {
@@ -194,7 +190,7 @@ export function SeatPicker({ eventId }: { eventId: string }) {
 
   const toggleSeat = useCallback(
     async (seat: SeatInfo) => {
-      if (suppressClick.current || seat.status === 'sold' || claiming) {
+      if (viewport.suppressClick.current || seat.status === 'sold' || claiming) {
         return;
       }
       if (seat.mine) {
@@ -233,8 +229,8 @@ export function SeatPicker({ eventId }: { eventId: string }) {
   const seatNodes = useMemo(
     () =>
       (map?.seats ?? []).map((seat) => {
-        const x = PAD + seat.x * STEP;
-        const y = 36 + PAD + seat.y * STEP;
+        const x = seatX(seat.x);
+        const y = seatY(seat.y);
         const fill = seat.mine ? seatFill.mine : seatFill[seat.status];
         return (
           <g key={seat.id}>
@@ -331,8 +327,8 @@ export function SeatPicker({ eventId }: { eventId: string }) {
     return <Skeleton className="h-[420px] w-full" />;
   }
 
-  const width = PAD * 2 + map.meta.maxCols * STEP - GAP;
-  const height = PAD + 36 + map.meta.totalRows * STEP - GAP + PAD;
+  const width = mapWidth(map.meta.maxCols);
+  const height = mapHeight(map.meta.totalRows);
 
   return (
     <Card>
@@ -351,7 +347,7 @@ export function SeatPicker({ eventId }: { eventId: string }) {
               size="icon-sm"
               className="size-11 sm:size-7"
               aria-label="Zoom out"
-              onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))}
+              onClick={viewport.zoomOut}
             >
               <Minus aria-hidden="true" />
             </Button>
@@ -361,7 +357,7 @@ export function SeatPicker({ eventId }: { eventId: string }) {
               size="icon-sm"
               className="size-11 sm:size-7"
               aria-label="Zoom in"
-              onClick={() => setZoom((value) => Math.min(2.5, value + 0.25))}
+              onClick={viewport.zoomIn}
             >
               <Plus aria-hidden="true" />
             </Button>
@@ -371,10 +367,7 @@ export function SeatPicker({ eventId }: { eventId: string }) {
               size="icon-sm"
               className="size-11 sm:size-7"
               aria-label="Reset view"
-              onClick={() => {
-                setZoom(1);
-                setPan({ x: 0, y: 0 });
-              }}
+              onClick={viewport.reset}
             >
               <RotateCcw aria-hidden="true" />
             </Button>
@@ -391,35 +384,13 @@ export function SeatPicker({ eventId }: { eventId: string }) {
             className="w-full touch-none select-none"
             role="group"
             aria-label="Interactive seat map"
-            onPointerDown={(event) => {
-              dragState.current = { x: event.clientX, y: event.clientY, moved: false };
-            }}
-            onPointerMove={(event) => {
-              const drag = dragState.current;
-              if (!drag) {
-                return;
-              }
-              const dx = event.clientX - drag.x;
-              const dy = event.clientY - drag.y;
-              if (!drag.moved && Math.abs(dx) + Math.abs(dy) > 4) {
-                drag.moved = true;
-                suppressClick.current = true;
-                event.currentTarget.setPointerCapture(event.pointerId);
-              }
-              if (drag.moved) {
-                setPan((current) => ({ x: current.x + dx, y: current.y + dy }));
-                drag.x = event.clientX;
-                drag.y = event.clientY;
-              }
-            }}
-            onPointerUp={() => {
-              dragState.current = null;
-              setTimeout(() => {
-                suppressClick.current = false;
-              }, 0);
-            }}
+            onPointerDown={viewport.onPointerDown}
+            onPointerMove={viewport.onPointerMove}
+            onPointerUp={viewport.onPointerUp}
           >
-            <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
+            <g
+              transform={`translate(${viewport.pan.x} ${viewport.pan.y}) scale(${viewport.zoom})`}
+            >
               <path
                 d={`M ${PAD + 8} 30 Q ${width / 2} 2 ${width - PAD - 8} 30`}
                 fill="none"
@@ -441,8 +412,8 @@ export function SeatPicker({ eventId }: { eventId: string }) {
               {map.meta.sections.map((section) => (
                 <text
                   key={section.name}
-                  x={PAD + section.xOffset * STEP}
-                  y={36 + PAD + section.yStart * STEP - 14}
+                  x={seatX(section.xOffset)}
+                  y={seatY(section.yStart) - 14}
                   className="fill-muted-foreground font-mono"
                   fontSize="11"
                 >
