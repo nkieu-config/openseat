@@ -38,6 +38,17 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
+func requiredSecret(key, devFallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	if os.Getenv("APP_ENV") == "production" {
+		log.Fatalf("%s must be set when APP_ENV=production", key)
+	}
+	log.Printf("%s is unset; falling back to the development default", key)
+	return devFallback
+}
+
 func positiveOr(key string, fallback int) int {
 	raw := os.Getenv(key)
 	if raw == "" {
@@ -55,7 +66,7 @@ func loadConfig() config {
 	return config{
 		port:          envOr("PORT", "4200"),
 		redisURL:      envOr("REDIS_URL", "redis://localhost:6379"),
-		secret:        envOr("GATE_ADMISSION_SECRET", "gate-dev-admission-secret"),
+		secret:        requiredSecret("GATE_ADMISSION_SECRET", "gate-dev-admission-secret"),
 		admissionTTL:  time.Duration(positiveOr("ADMISSION_TTL_SECONDS", 300)) * time.Second,
 		admitBatch:    positiveOr("ADMIT_BATCH", 3),
 		admitInterval: time.Duration(positiveOr("ADMIT_INTERVAL_MS", 2000)) * time.Millisecond,

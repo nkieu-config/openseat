@@ -41,11 +41,22 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
+func requiredSecret(key, devFallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	if os.Getenv("APP_ENV") == "production" {
+		log.Fatalf("%s must be set when APP_ENV=production", key)
+	}
+	log.Printf("%s is unset; falling back to the development default", key)
+	return devFallback
+}
+
 func loadConfig() config {
 	return config{
 		port:              envOr("PORT", "4100"),
-		apiKey:            envOr("PAYMOCK_API_KEY", "paymock-dev-key"),
-		webhookSecret:     envOr("PAYMOCK_WEBHOOK_SECRET", "paymock-dev-webhook-secret"),
+		apiKey:            requiredSecret("PAYMOCK_API_KEY", "paymock-dev-key"),
+		webhookSecret:     requiredSecret("PAYMOCK_WEBHOOK_SECRET", "paymock-dev-webhook-secret"),
 		publicURL:         envOr("PAYMOCK_PUBLIC_URL", "http://localhost:4100"),
 		duplicateWebhooks: envOr("PAYMOCK_DUPLICATE_WEBHOOKS", "true") == "true",
 	}

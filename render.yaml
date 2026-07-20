@@ -72,6 +72,8 @@ services:
     startCommand: ./paymock
     healthCheckPath: /health
     envVars:
+      - key: APP_ENV
+        value: production
       - key: PAYMOCK_PUBLIC_URL
         value: https://openseat-paymock.onrender.com
       - fromGroup: paymock-shared
@@ -85,6 +87,8 @@ services:
     startCommand: ./gate
     healthCheckPath: /health
     envVars:
+      - key: APP_ENV
+        value: production
       - key: REDIS_URL
         fromService:
           type: keyvalue
