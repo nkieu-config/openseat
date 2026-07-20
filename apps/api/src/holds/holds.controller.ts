@@ -10,7 +10,13 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { ApiHeader, ApiProperty, ApiTags } from '@nestjs/swagger';
+import {
+  ApiCreatedResponse,
+  ApiHeader,
+  ApiOkResponse,
+  ApiProperty,
+  ApiTags,
+} from '@nestjs/swagger';
 import { IsString, Length } from 'class-validator';
 import { AdmissionGuard } from '../admission/admission.guard';
 import { HoldsService } from './holds.service';
@@ -31,6 +37,8 @@ function requireHolderKey(holderKey?: string): string {
   return holderKey;
 }
 
+import { HoldDto } from './dto/hold-response.dto';
+
 @ApiTags('holds')
 @Controller('events/:eventId/holds')
 export class HoldsController {
@@ -38,6 +46,7 @@ export class HoldsController {
 
   @Post()
   @HttpCode(201)
+  @ApiCreatedResponse({ type: HoldDto })
   @UseGuards(AdmissionGuard)
   @ApiHeader({ name: 'x-hold-key', required: true })
   @ApiHeader({ name: 'x-admission-token', required: false })
@@ -50,6 +59,7 @@ export class HoldsController {
   }
 
   @Get('mine')
+  @ApiOkResponse({ type: [HoldDto] })
   @ApiHeader({ name: 'x-hold-key', required: true })
   listMine(
     @Param('eventId') eventId: string,

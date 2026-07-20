@@ -30,5 +30,5 @@ export async function checkInTicket(
       message: apiErrorMessage(error, "Ticket not recognised"),
     };
   }
-  return { ok: true, result: data as unknown as CheckinResult };
+  return { ok: true, result: data };
 }

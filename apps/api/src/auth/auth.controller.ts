@@ -10,7 +10,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService, AuthTokens } from './auth.service';
@@ -22,6 +27,8 @@ import { RegisterDto } from './dto/register.dto';
 
 export const REFRESH_COOKIE = 'os_refresh';
 const AUTH_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
+
+import { AuthResponseDto, PublicUserDto } from './dto/auth-response.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -51,6 +58,7 @@ export class AuthController {
   }
 
   @Post('register')
+  @ApiCreatedResponse({ type: AuthResponseDto })
   @Throttle(AUTH_THROTTLE)
   async register(
     @Body() dto: RegisterDto,
@@ -62,6 +70,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @ApiCreatedResponse({ type: AuthResponseDto })
   @HttpCode(200)
   @Throttle(AUTH_THROTTLE)
   async login(
@@ -74,6 +83,7 @@ export class AuthController {
   }
 
   @Post('google')
+  @ApiCreatedResponse({ type: AuthResponseDto })
   @HttpCode(200)
   @Throttle(AUTH_THROTTLE)
   async google(
@@ -86,6 +96,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @ApiCreatedResponse({ type: AuthResponseDto })
   @HttpCode(200)
   async refresh(
     @Req() req: Request,
@@ -109,6 +120,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @ApiOkResponse({ type: PublicUserDto })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   me(@CurrentUser() user: RequestUser) {

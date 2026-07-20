@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const postSession = useCallback(
     async (
       request: Promise<{
-        data?: unknown;
+        data?: AuthResponse;
         error?: unknown;
         response: Response;
       }>,
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok || data === undefined) {
         throw new Error(apiErrorMessage(error, fallbackMessage));
       }
-      const session = data as unknown as AuthResponse;
+      const session = data;
       applySession(session);
       return session.user;
     },

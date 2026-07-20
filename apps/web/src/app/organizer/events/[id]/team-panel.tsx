@@ -33,7 +33,7 @@ export function TeamPanel({ eventId }: { eventId: string }) {
     const { data } = await api.GET("/api/events/{eventId}/team", {
       params: { path: { eventId } },
     });
-    return (data as unknown as TeamMember[] | undefined) ?? [];
+    return data ?? [];
   }, [eventId]);
 
   const refresh = useCallback(async () => {

@@ -17,7 +17,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -40,8 +47,15 @@
           }
         },
         "responses": {
-          "200": {
-            "description": ""
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -64,8 +78,15 @@
           }
         },
         "responses": {
-          "200": {
-            "description": ""
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -78,8 +99,15 @@
         "operationId": "AuthController_refresh",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": ""
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -107,7 +135,14 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicUserDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -135,7 +170,17 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TeamMemberDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -171,7 +216,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamMemberDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -217,7 +269,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamMemberDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -280,7 +339,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -304,7 +370,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetailDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -323,7 +396,17 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MyEventDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -351,7 +434,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetailDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -384,7 +474,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetailDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -412,7 +509,14 @@
         ],
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetailDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -450,7 +554,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketTypePublicDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -496,7 +607,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketTypePublicDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -534,7 +652,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinResultDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -616,7 +741,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoldDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -647,7 +779,17 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HoldDto"
+                  }
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -719,7 +861,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeatMapDataDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -761,7 +910,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeatMapDataDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -818,7 +974,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetailDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -849,7 +1012,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetailDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -863,7 +1033,17 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MyTicketDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -891,7 +1071,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -940,7 +1127,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -968,7 +1162,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1018,6 +1219,7 @@
         "properties": {
           "email": {
             "type": "string",
+            "format": "email",
             "example": "ada@example.com"
           },
           "password": {
@@ -1027,6 +1229,8 @@
           },
           "displayName": {
             "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
             "example": "Ada Lovelace"
           }
         },
@@ -1036,15 +1240,55 @@
           "displayName"
         ]
       },
+      "PublicUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "isDemo": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "isDemo"
+        ]
+      },
+      "AuthResponseDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/PublicUserDto"
+          },
+          "accessToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "accessToken"
+        ]
+      },
       "LoginDto": {
         "type": "object",
         "properties": {
           "email": {
             "type": "string",
+            "format": "email",
             "example": "ada@example.com"
           },
           "password": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 72
           }
         },
         "required": [
@@ -1064,18 +1308,51 @@
           "credential"
         ]
       },
-      "AddTeamMemberDto": {
+      "TeamMemberDto": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string"
+          },
           "email": {
             "type": "string"
           },
           "role": {
+            "type": "string"
+          },
+          "linked": {
+            "type": "boolean"
+          },
+          "displayName": {
             "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "linked",
+          "displayName",
+          "createdAt"
+        ]
+      },
+      "AddTeamMemberDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
             "enum": [
               "manager",
               "staff"
-            ]
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -1087,11 +1364,11 @@
         "type": "object",
         "properties": {
           "role": {
-            "type": "string",
             "enum": [
               "manager",
               "staff"
-            ]
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -1119,6 +1396,8 @@
         "properties": {
           "name": {
             "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
             "example": "General admission"
           },
           "quantity": {
@@ -1150,14 +1429,19 @@
         "properties": {
           "title": {
             "type": "string",
+            "minLength": 3,
+            "maxLength": 120,
             "example": "Bangkok Indie Fest"
           },
           "description": {
             "type": "string",
+            "maxLength": 5000,
             "default": ""
           },
           "venueName": {
             "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
             "example": "Voice Space, Bangkok"
           },
           "startsAt": {
@@ -1169,6 +1453,8 @@
             "example": "2026-09-01T16:00:00.000Z"
           },
           "ticketTypes": {
+            "minItems": 1,
+            "maxItems": 10,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateTicketTypeDto"
@@ -1182,17 +1468,253 @@
           "ticketTypes"
         ]
       },
-      "UpdateEventDto": {
+      "EventOrganizerDto": {
         "type": "object",
         "properties": {
-          "title": {
+          "id": {
             "type": "string"
           },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName"
+        ]
+      },
+      "TicketTypePublicDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "ga",
+              "seated"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "priceSatang": {
+            "type": "number"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "remaining": {
+            "type": "number"
+          },
+          "maxPerOrder": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "priceSatang",
+          "quantity",
+          "remaining",
+          "maxPerOrder"
+        ]
+      },
+      "EventSeatMapRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "EventDetailDto": {
+        "type": "object",
+        "properties": {
           "description": {
+            "type": "string"
+          },
+          "endsAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "published"
+            ],
+            "type": "string"
+          },
+          "coverImageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDemo": {
+            "type": "boolean"
+          },
+          "dropMode": {
+            "type": "boolean"
+          },
+          "saleOpensAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "organizer": {
+            "$ref": "#/components/schemas/EventOrganizerDto"
+          },
+          "ticketTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TicketTypePublicDto"
+            }
+          },
+          "seatMap": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventSeatMapRefDto"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
             "type": "string"
           },
           "venueName": {
             "type": "string"
+          },
+          "startsAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "endsAt",
+          "status",
+          "coverImageUrl",
+          "isDemo",
+          "dropMode",
+          "saleOpensAt",
+          "organizer",
+          "ticketTypes",
+          "seatMap",
+          "id",
+          "slug",
+          "title",
+          "venueName",
+          "startsAt"
+        ]
+      },
+      "MyEventDto": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "endsAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published"
+            ]
+          },
+          "coverImageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDemo": {
+            "type": "boolean"
+          },
+          "dropMode": {
+            "type": "boolean"
+          },
+          "saleOpensAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "ticketTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TicketTypePublicDto"
+            }
+          },
+          "seatMap": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventSeatMapRefDto"
+              }
+            ]
+          },
+          "ticketsIssued": {
+            "type": "number"
+          },
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "venueName": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "endsAt",
+          "status",
+          "coverImageUrl",
+          "isDemo",
+          "dropMode",
+          "saleOpensAt",
+          "ticketTypes",
+          "seatMap",
+          "ticketsIssued",
+          "id",
+          "slug",
+          "title",
+          "venueName",
+          "startsAt"
+        ]
+      },
+      "UpdateEventDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "venueName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
           },
           "startsAt": {
             "type": "string"
@@ -1206,7 +1728,9 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
           },
           "quantity": {
             "type": "number",
@@ -1225,11 +1749,54 @@
         "properties": {
           "qrToken": {
             "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
             "description": "The scanned ticket QR token"
           }
         },
         "required": [
           "qrToken"
+        ]
+      },
+      "CheckinResultDto": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "checked_in",
+              "already_checked_in"
+            ]
+          },
+          "ticketId": {
+            "type": "string"
+          },
+          "attendeeName": {
+            "type": "string"
+          },
+          "ticketType": {
+            "type": "string"
+          },
+          "seat": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "checkedInAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "outcome",
+          "ticketId",
+          "attendeeName",
+          "ticketType",
+          "seat",
+          "status",
+          "checkedInAt"
         ]
       },
       "AcquireHoldDto": {
@@ -1241,6 +1808,21 @@
         },
         "required": [
           "seatId"
+        ]
+      },
+      "HoldDto": {
+        "type": "object",
+        "properties": {
+          "seatId": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seatId",
+          "expiresAt"
         ]
       },
       "SeatMapSectionDto": {
@@ -1305,6 +1887,162 @@
           "sections"
         ]
       },
+      "SeatMapSectionMetaDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "yStart": {
+            "type": "number"
+          },
+          "rows": {
+            "type": "number"
+          },
+          "cols": {
+            "type": "number"
+          },
+          "xOffset": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "yStart",
+          "rows",
+          "cols",
+          "xOffset"
+        ]
+      },
+      "SeatMapMetaDto": {
+        "type": "object",
+        "properties": {
+          "maxCols": {
+            "type": "number"
+          },
+          "totalRows": {
+            "type": "number"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeatMapSectionMetaDto"
+            }
+          }
+        },
+        "required": [
+          "maxCols",
+          "totalRows",
+          "sections"
+        ]
+      },
+      "SeatMapTierDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "priceSatang": {
+            "type": "number"
+          },
+          "remaining": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "priceSatang",
+          "remaining"
+        ]
+      },
+      "SeatInfoDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "section": {
+            "type": "string"
+          },
+          "rowLabel": {
+            "type": "string"
+          },
+          "number": {
+            "type": "number"
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "ticketTypeId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "sold",
+              "held",
+              "available"
+            ]
+          },
+          "mine": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "section",
+          "rowLabel",
+          "number",
+          "x",
+          "y",
+          "ticketTypeId",
+          "status",
+          "mine"
+        ]
+      },
+      "SeatMapDataDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "template": {
+            "type": "string"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/SeatMapMetaDto"
+          },
+          "tiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeatMapTierDto"
+            }
+          },
+          "seats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeatInfoDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "template",
+          "meta",
+          "tiers",
+          "seats"
+        ]
+      },
       "OrderItemInputDto": {
         "type": "object",
         "properties": {
@@ -1326,12 +2064,16 @@
         "type": "object",
         "properties": {
           "items": {
+            "minItems": 1,
+            "maxItems": 5,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/OrderItemInputDto"
             }
           },
           "seatIds": {
+            "minItems": 1,
+            "maxItems": 8,
             "description": "Seat ids currently held by the caller",
             "type": "array",
             "items": {
@@ -1340,10 +2082,13 @@
           },
           "buyerEmail": {
             "type": "string",
+            "format": "email",
             "example": "ada@example.com"
           },
           "buyerName": {
             "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
             "example": "Ada Lovelace"
           }
         },
@@ -1352,10 +2097,285 @@
           "buyerName"
         ]
       },
+      "EventSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "venueName": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "venueName",
+          "startsAt"
+        ]
+      },
+      "TicketTypeRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "OrderItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unitPriceSatang": {
+            "type": "number"
+          },
+          "ticketType": {
+            "$ref": "#/components/schemas/TicketTypeRefDto"
+          }
+        },
+        "required": [
+          "id",
+          "quantity",
+          "unitPriceSatang",
+          "ticketType"
+        ]
+      },
+      "SeatLabelDto": {
+        "type": "object",
+        "properties": {
+          "section": {
+            "type": "string"
+          },
+          "rowLabel": {
+            "type": "string"
+          },
+          "number": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "section",
+          "rowLabel",
+          "number"
+        ]
+      },
+      "OrderTicketDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "qrToken": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "issued",
+              "checked_in",
+              "void"
+            ]
+          },
+          "attendeeName": {
+            "type": "string"
+          },
+          "ticketType": {
+            "$ref": "#/components/schemas/TicketTypeRefDto"
+          },
+          "seat": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SeatLabelDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "qrToken",
+          "status",
+          "attendeeName",
+          "ticketType",
+          "seat"
+        ]
+      },
+      "OrderPaymentDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "failed",
+              "requires_action"
+            ]
+          },
+          "checkoutUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "checkoutUrl"
+        ]
+      },
+      "OrderDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "awaiting_payment",
+              "paid",
+              "expired",
+              "canceled",
+              "partially_refunded",
+              "refunded"
+            ],
+            "type": "string"
+          },
+          "totalSatang": {
+            "type": "number"
+          },
+          "refundedSatang": {
+            "type": "number"
+          },
+          "guestToken": {
+            "type": "string"
+          },
+          "buyerEmail": {
+            "type": "string"
+          },
+          "buyerName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "event": {
+            "$ref": "#/components/schemas/EventSummaryDto"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderItemDto"
+            }
+          },
+          "tickets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderTicketDto"
+            }
+          },
+          "payment": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderPaymentDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "totalSatang",
+          "refundedSatang",
+          "guestToken",
+          "buyerEmail",
+          "buyerName",
+          "createdAt",
+          "expiresAt",
+          "event",
+          "items",
+          "tickets",
+          "payment"
+        ]
+      },
+      "MyTicketDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "qrToken": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "issued",
+              "checked_in",
+              "void"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "event": {
+            "$ref": "#/components/schemas/EventSummaryDto"
+          },
+          "ticketType": {
+            "$ref": "#/components/schemas/TicketTypeRefDto"
+          },
+          "seat": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SeatLabelDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "qrToken",
+          "status",
+          "createdAt",
+          "event",
+          "ticketType",
+          "seat"
+        ]
+      },
       "CreateRefundDto": {
         "type": "object",
         "properties": {
           "ticketIds": {
+            "minItems": 1,
+            "maxItems": 50,
             "type": "array",
             "items": {
               "type": "string"

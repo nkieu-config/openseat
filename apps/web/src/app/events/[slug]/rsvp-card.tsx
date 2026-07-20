@@ -1,6 +1,6 @@
 "use client";
 
-import type { EventDetail, OrderDetail } from "@openseat/contracts";
+import type { EventDetail } from "@openseat/contracts";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -72,7 +72,7 @@ export function RsvpCard({ event }: { event: EventDetail }) {
         }
         return;
       }
-      const order = data as unknown as OrderDetail;
+      const order = data;
       if (order.status === "awaiting_payment" && order.payment?.checkoutUrl) {
         window.location.assign(order.payment.checkoutUrl);
         return;

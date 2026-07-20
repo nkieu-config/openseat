@@ -1,10 +1,11 @@
 import { Body, Controller, HttpCode, Post, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiProperty, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { IsIn } from 'class-validator';
 import type { Response } from 'express';
 import { REFRESH_COOKIE } from '../auth/auth.controller';
+import { AuthResponseDto } from '../auth/dto/auth-response.dto';
 import { DemoService } from './demo.service';
 
 class DemoLoginDto {
@@ -23,6 +24,7 @@ export class DemoController {
 
   @Post('login')
   @HttpCode(200)
+  @ApiOkResponse({ type: AuthResponseDto })
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   async login(
     @Body() dto: DemoLoginDto,

@@ -1,6 +1,5 @@
 "use client";
 
-import type { EventDetail } from "@openseat/contracts";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -60,7 +59,7 @@ export default function NewEventPage() {
         setBusy(false);
         return;
       }
-      const created = data as unknown as EventDetail;
+      const created = data;
       toast.success("Event created as a draft");
       router.push(`/organizer/events/${created.id}`);
     } catch {

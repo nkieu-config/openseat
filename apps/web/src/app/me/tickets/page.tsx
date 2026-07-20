@@ -29,7 +29,7 @@ export default function MyTicketsPage() {
     let cancelled = false;
     void api.GET("/api/me/tickets").then(({ data, response }) => {
       if (!cancelled && response.ok && data !== undefined) {
-        setTickets(data as unknown as MyTicket[]);
+        setTickets(data);
       }
     });
     return () => {

@@ -16,3 +16,12 @@ export class UpdateTeamMemberDto {
   @IsIn(['manager', 'staff'])
   role!: 'manager' | 'staff';
 }
+
+export class TeamMemberDto {
+  id: string;
+  email: string;
+  role: string;
+  linked: boolean;
+  displayName: string | null;
+  createdAt: string;
+}

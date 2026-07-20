@@ -9,12 +9,21 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiHeader, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiHeader,
+  ApiOkResponse,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AdmissionGuard } from '../admission/admission.guard';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard, OptionalJwtAuthGuard } from '../auth/guards';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrdersService } from './orders.service';
+
+import { MyTicketDto, OrderDetailDto } from './dto/order-response.dto';
 
 @ApiTags('orders')
 @Controller()
@@ -22,6 +31,7 @@ export class OrdersController {
   constructor(private readonly orders: OrdersService) {}
 
   @Post('events/:eventId/orders')
+  @ApiCreatedResponse({ type: OrderDetailDto })
   @HttpCode(201)
   @UseGuards(OptionalJwtAuthGuard, AdmissionGuard)
   @ApiHeader({ name: 'idempotency-key', required: false })
@@ -45,6 +55,7 @@ export class OrdersController {
   }
 
   @Get('orders/:id')
+  @ApiOkResponse({ type: OrderDetailDto })
   @UseGuards(OptionalJwtAuthGuard)
   @ApiQuery({ name: 'token', required: false })
   getById(
@@ -59,6 +70,7 @@ export class OrdersController {
   }
 
   @Get('me/tickets')
+  @ApiOkResponse({ type: [MyTicketDto] })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   listMyTickets(@CurrentUser() user: RequestUser) {

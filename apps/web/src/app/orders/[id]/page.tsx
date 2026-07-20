@@ -99,7 +99,7 @@ function OrderView() {
           setState("missing");
           return;
         }
-        setOrder(data as unknown as OrderDetail);
+        setOrder(data);
         setState("ready");
       });
     return () => {

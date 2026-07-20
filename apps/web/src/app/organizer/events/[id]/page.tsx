@@ -54,7 +54,7 @@ export default function EventConsolePage() {
       const { data } = await api.GET("/api/events/{eventId}/seat-map", {
         params: { path: { eventId } },
       });
-      map = (data as unknown as SeatMapData | undefined) ?? null;
+      map = data ?? null;
     }
     return { dash, map };
   }, [eventId]);

@@ -7,12 +7,22 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard, OptionalJwtAuthGuard } from '../auth/guards';
 import { CreateEventDto, CreateTicketTypeDto } from './dto/create-event.dto';
 import { UpdateEventDto, UpdateTicketTypeDto } from './dto/update-event.dto';
 import { EventsService } from './events.service';
+import {
+  EventDetailDto,
+  MyEventDto,
+  TicketTypePublicDto,
+} from './dto/event-response.dto';
 
 @ApiTags('events')
 @Controller('events')
@@ -22,6 +32,7 @@ export class EventsController {
   @Post()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @ApiCreatedResponse({ type: EventDetailDto })
   create(@CurrentUser() user: RequestUser, @Body() dto: CreateEventDto) {
     return this.events.create(user.id, dto);
   }
@@ -29,12 +40,14 @@ export class EventsController {
   @Get('mine')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @ApiOkResponse({ type: [MyEventDto] })
   listMine(@CurrentUser() user: RequestUser) {
     return this.events.listMine(user.id);
   }
 
   @Get(':slug')
   @UseGuards(OptionalJwtAuthGuard)
+  @ApiOkResponse({ type: EventDetailDto })
   getBySlug(
     @Param('slug') slug: string,
     @CurrentUser() user: RequestUser | null,
@@ -45,6 +58,7 @@ export class EventsController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @ApiOkResponse({ type: EventDetailDto })
   update(
     @CurrentUser() user: RequestUser,
     @Param('id') id: string,
@@ -56,11 +70,13 @@ export class EventsController {
   @Post(':id/publish')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @ApiCreatedResponse({ type: EventDetailDto })
   publish(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.events.publish(id, user.id);
   }
 
   @Post(':id/ticket-types')
+  @ApiCreatedResponse({ type: TicketTypePublicDto })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   addTicketType(
@@ -72,6 +88,7 @@ export class EventsController {
   }
 
   @Patch(':id/ticket-types/:ticketTypeId')
+  @ApiOkResponse({ type: TicketTypePublicDto })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   updateTicketType(

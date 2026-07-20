@@ -9,10 +9,19 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards';
-import { AddTeamMemberDto, UpdateTeamMemberDto } from './dto/team-member.dto';
+import {
+  AddTeamMemberDto,
+  TeamMemberDto,
+  UpdateTeamMemberDto,
+} from './dto/team-member.dto';
 import { TeamService } from './team.service';
 
 @ApiTags('team')
@@ -23,11 +32,13 @@ export class TeamController {
   constructor(private readonly team: TeamService) {}
 
   @Get()
+  @ApiOkResponse({ type: [TeamMemberDto] })
   list(@Param('eventId') eventId: string, @CurrentUser() user: RequestUser) {
     return this.team.list(eventId, user.id);
   }
 
   @Post()
+  @ApiCreatedResponse({ type: TeamMemberDto })
   @HttpCode(201)
   add(
     @Param('eventId') eventId: string,
@@ -38,6 +49,7 @@ export class TeamController {
   }
 
   @Patch(':memberId')
+  @ApiOkResponse({ type: TeamMemberDto })
   changeRole(
     @Param('eventId') eventId: string,
     @Param('memberId') memberId: string,

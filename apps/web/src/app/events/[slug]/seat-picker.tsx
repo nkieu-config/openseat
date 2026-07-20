@@ -1,6 +1,6 @@
 'use client';
 
-import type { OrderDetail, SeatInfo, SeatMapData, SeatsChangedMessage } from '@openseat/contracts';
+import type { SeatInfo, SeatMapData, SeatsChangedMessage } from '@openseat/contracts';
 import { Minus, Plus, RotateCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -91,7 +91,7 @@ export function SeatPicker({ eventId }: { eventId: string }) {
           setFailed(true);
           return;
         }
-        setMap(data as unknown as SeatMapData);
+        setMap(data);
       });
     return () => {
       cancelled = true;
@@ -207,7 +207,7 @@ export function SeatPicker({ eventId }: { eventId: string }) {
         toast.error(apiErrorMessage(error, `Could not hold ${seatLabel(seat)}`));
         return;
       }
-      const hold = data as unknown as { seatId: string; expiresAt: string };
+      const hold = data;
       applySeat(seat.id, { status: 'held', mine: true, expiresAt: hold.expiresAt });
     },
     [applySeat, claiming, eventId, holdKey, refresh],
@@ -295,7 +295,7 @@ export function SeatPicker({ eventId }: { eventId: string }) {
         }
         return;
       }
-      const order = data as unknown as OrderDetail;
+      const order = data;
       if (order.status === 'awaiting_payment' && order.payment?.checkoutUrl) {
         window.location.assign(order.payment.checkoutUrl);
         return;

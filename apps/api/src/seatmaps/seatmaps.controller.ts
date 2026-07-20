@@ -9,7 +9,9 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
   ApiHeader,
+  ApiOkResponse,
   ApiProperty,
   ApiPropertyOptional,
   ApiTags,
@@ -98,12 +100,15 @@ export class CreateSeatMapDto {
   sections!: SeatMapSectionDto[];
 }
 
+import { SeatMapDataDto } from './dto/seat-map-response.dto';
+
 @ApiTags('seat-maps')
 @Controller('events/:eventId/seat-map')
 export class SeatmapsController {
   constructor(private readonly seatmaps: SeatmapsService) {}
 
   @Post()
+  @ApiCreatedResponse({ type: SeatMapDataDto })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   create(
@@ -115,6 +120,7 @@ export class SeatmapsController {
   }
 
   @Get()
+  @ApiOkResponse({ type: SeatMapDataDto })
   @UseGuards(AdmissionGuard)
   @ApiHeader({ name: 'x-hold-key', required: false })
   @ApiHeader({ name: 'x-admission-token', required: false })

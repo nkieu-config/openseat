@@ -7,12 +7,12 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiCreatedResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards';
 import { CheckinService } from './checkin.service';
-import { CheckinDto } from './dto/checkin.dto';
+import { CheckinDto, CheckinResultDto } from './dto/checkin.dto';
 
 @ApiTags('checkin')
 @ApiBearerAuth()
@@ -21,6 +21,7 @@ export class CheckinController {
   constructor(private readonly checkin: CheckinService) {}
 
   @Post(':id/checkin')
+  @ApiCreatedResponse({ type: CheckinResultDto })
   @UseGuards(JwtAuthGuard)
   scan(
     @CurrentUser() user: RequestUser,
