@@ -44,8 +44,12 @@ import { TelemetryExceptionFilter } from './telemetry/telemetry-exception.filter
         },
         serializers: {
           req: (request: Parameters<typeof stdSerializers.req>[0]) => {
-            const serialized = stdSerializers.req(request);
-            return { ...serialized, url: serialized.url.split('?')[0] };
+            const serialized: Record<string, unknown> = {
+              ...stdSerializers.req(request),
+            };
+            delete serialized.query;
+            serialized.url = String(serialized.url).split('?')[0];
+            return serialized;
           },
         },
       },
