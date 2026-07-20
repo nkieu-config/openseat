@@ -70,6 +70,7 @@ export function SeatPicker({ eventId }: { eventId: string }) {
   const [claiming, setClaiming] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const holdKey = useMemo(() => getHoldKey(), []);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const dragState = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
   const idempotencyKey = useRef<string>(crypto.randomUUID());
@@ -148,6 +149,22 @@ export function SeatPicker({ eventId }: { eventId: string }) {
   useEffect(() => {
     earliestExpiryRef.current = earliestExpiry;
   }, [earliestExpiry]);
+
+  useEffect(() => {
+    if (!map) {
+      return;
+    }
+    const element = containerRef.current;
+    if (!element || element.clientWidth === 0) {
+      return;
+    }
+    const mapWidth = PAD * 2 + map.meta.maxCols * STEP - GAP;
+    const seatPx = (element.clientWidth * CELL) / mapWidth;
+    if (seatPx < 34) {
+      const target = Math.min(2.5, 40 / seatPx);
+      setZoom((current) => (current === 1 && target > 1 ? target : current));
+    }
+  }, [map]);
 
   useEffect(() => {
     if (mySeats.length === 0) {
@@ -365,11 +382,14 @@ export function SeatPicker({ eventId }: { eventId: string }) {
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <div className="overflow-hidden rounded-xl border border-border bg-background/60">
+        <div
+          ref={containerRef}
+          className="overflow-hidden rounded-xl border border-border bg-background/60"
+        >
           <svg
             viewBox={`0 0 ${width} ${height}`}
             className="w-full touch-none select-none"
-            role="img"
+            role="group"
             aria-label="Interactive seat map"
             onPointerDown={(event) => {
               dragState.current = { x: event.clientX, y: event.clientY, moved: false };

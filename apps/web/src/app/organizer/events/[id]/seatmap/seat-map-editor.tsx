@@ -2,7 +2,8 @@
 
 import { Plus, Redo2, Save, Trash2, Undo2 } from "lucide-react";
 import {
-  type MouseEvent as ReactMouseEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   useEffect,
   useRef,
@@ -136,7 +137,7 @@ export function SeatMapEditor({
     };
   }
 
-  function onSectionMouseDown(event: ReactMouseEvent, id: string) {
+  function onSectionPointerDown(event: ReactPointerEvent, id: string) {
     event.preventDefault();
     const section = sections.find((s) => s.id === id);
     if (!section) return;
@@ -146,11 +147,42 @@ export function SeatMapEditor({
     setDragging(true);
   }
 
+  function onSectionKeyDown(event: ReactKeyboardEvent, id: string) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      setSelectedId(id);
+      return;
+    }
+    const deltas: Record<string, [number, number]> = {
+      ArrowLeft: [-1, 0],
+      ArrowRight: [1, 0],
+      ArrowUp: [0, -1],
+      ArrowDown: [0, 1],
+    };
+    const delta = deltas[event.key];
+    if (!delta) {
+      return;
+    }
+    event.preventDefault();
+    setSelectedId(id);
+    commit(
+      sections.map((s) =>
+        s.id === id
+          ? {
+              ...s,
+              x: Math.max(0, s.x + delta[0]),
+              y: Math.max(0, s.y + delta[1]),
+            }
+          : s,
+      ),
+    );
+  }
+
   useEffect(() => {
     if (!dragging) {
       return;
     }
-    function move(event: MouseEvent) {
+    function move(event: PointerEvent) {
       const drag = dragRef.current;
       if (!drag) return;
       const { gx, gy } = gridAt(event.clientX, event.clientY);
@@ -164,11 +196,11 @@ export function SeatMapEditor({
       dragRef.current = null;
       setDragging(false);
     }
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
     return () => {
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", up);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
     };
   }, [dragging]);
 
@@ -308,8 +340,13 @@ export function SeatMapEditor({
               return (
                 <g
                   key={section.id}
-                  className="cursor-grab active:cursor-grabbing"
-                  onMouseDown={(event) => onSectionMouseDown(event, section.id)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${section.name || `Section ${index + 1}`}, use arrow keys to move`}
+                  className="cursor-grab outline-none focus-visible:[outline:2px_solid_var(--primary)] active:cursor-grabbing"
+                  onPointerDown={(event) => onSectionPointerDown(event, section.id)}
+                  onFocus={() => setSelectedId(section.id)}
+                  onKeyDown={(event) => onSectionKeyDown(event, section.id)}
                 >
                   {Array.from({ length: section.rows }, (_, r) =>
                     Array.from({ length: section.cols }, (_, c) => (
