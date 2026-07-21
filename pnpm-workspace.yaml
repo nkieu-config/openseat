@@ -5,8 +5,10 @@ packages:
   - tests/*
 
 overrides:
+  fast-uri@3: ^3.1.4
   ioredis: ^5.11.1
   js-yaml@4: ^4.3.0
+  sharp: ^0.35.0
   ws: ^8.21.0
 
 allowBuilds:
