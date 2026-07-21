@@ -178,3 +178,55 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit --audit-level=high
+
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: openseat
+          POSTGRES_PASSWORD: openseat
+          POSTGRES_DB: openseat
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U openseat"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://openseat:openseat@localhost:5432/openseat
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f apps/api/Dockerfile --target migrate -t openseat-migrate:ci .
+      - run: docker build -f apps/api/Dockerfile -t openseat-api:ci .
+      - name: Apply migrations and seed the demo data
+        run: docker run --rm --network host -e DATABASE_URL="$DATABASE_URL" openseat-migrate:ci
+      - name: Start the API image
+        run: |
+          docker run -d --name api --network host \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e REDIS_URL=redis://localhost:6379 \
+            -e JWT_SECRET=ci-image-smoke \
+            -e PAYMOCK_API_KEY=ci -e PAYMOCK_WEBHOOK_SECRET=ci \
+            -e GATE_ADMISSION_SECRET=ci \
+            -e WEB_ORIGIN=http://localhost:3000 \
+            -e PAYMOCK_URL=http://localhost:4100 \
+            -e API_PUBLIC_URL=http://localhost:4000 \
+            openseat-api:ci
+      - name: Probe every surface the runtime prune could break
+        run: bash scripts/smoke-api-image.sh
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs api
