@@ -1,0 +1,9 @@
+{
+  "name": "@openseat/paymock",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Workspace shim so turbo can run the Go payment simulator alongside the TypeScript apps",
+  "scripts": {
+    "dev": "go run ."
+  }
+}

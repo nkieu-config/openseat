@@ -10,7 +10,7 @@ Turborepo + pnpm workspaces:
 
 - `apps/web` — Next.js App Router, Tailwind v4, shadcn/ui (dark-first)
 - `apps/api` — NestJS modular monolith: REST + OpenAPI at `/api`, Swagger at `/api/docs`, read-only GraphQL for the organizer console at `/api/graphql` (ADR 0006), Socket.IO realtime at namespace `/rt` (Redis adapter when `REDIS_URL` is set), BullMQ hold sweeper, OpenTelemetry traces/metrics/logs (ADR 0009), per-event role checks through `access/` (ADR 0012), Prisma 7 (client generated to `apps/api/src/generated/prisma`, gitignored). Seat holds are DB-authoritative; the browser talks to websockets directly at the API origin (`NEXT_PUBLIC_API_ORIGIN`), not through the Next.js proxy
-- `services/paymock` — Go payment simulator (intents, hosted pay page, refunds, HMAC webhooks sent twice on purpose); run locally with `go -C services/paymock run .`, test with `go -C services/paymock test ./...` (each service is its own Go module, so root-relative package paths do not resolve)
+- `services/paymock` — Go payment simulator (intents, hosted pay page, refunds, HMAC webhooks sent twice on purpose); test with `go -C services/paymock test ./...` — each service is its own Go module, so root-relative package paths do not resolve. Both Go services carry a `package.json` holding only a `dev` script so `pnpm dev` can start them alongside the TypeScript apps; they own no npm dependencies
 - `services/gate` — Go waiting room (Redis queue, SSE positions, stateless admission JWTs), shipped in M5
 - `packages/contracts` — the OpenAPI spec plus its generated TypeScript client (types only, no runtime schemas); `packages/config` — shared tsconfig
 - `tests/e2e` — Playwright browser journeys driving all four services at once; locates by accessible role and name, never `data-testid` (ADR 0010)
@@ -20,9 +20,8 @@ Turborepo + pnpm workspaces:
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d
-pnpm dev                                   # web :3000, api :4000
-go -C services/paymock run .               # :4100 — needed for anything that takes money
-go -C services/gate run .                  # :4200 — needed for the drop/waiting-room event
+pnpm dev                                   # all four: web :3000, api :4000, paymock :4100, gate :4200
+pnpm --filter @openseat/paymock dev        # or run one service on its own (same as `go -C services/paymock run .`)
 pnpm turbo run lint typecheck build test   # the CI quality gate
 pnpm --filter api test:e2e                 # integration tests (needs compose stack)
 pnpm e2e                                   # browser journeys (needs compose stack; stop `pnpm dev` first)

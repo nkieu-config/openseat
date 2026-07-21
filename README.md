@@ -51,19 +51,28 @@ Key invariant: `tickets` carries a unique constraint on `(event_id, seat_id)` �
 
 ## Local development
 
-Prerequisites: Node 22+, pnpm 11+, Docker.
+Prerequisites: Node 22+, pnpm 11+, Go 1.26+, Docker.
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d
 pnpm install
 pnpm --filter api db:generate
 pnpm --filter api db:migrate
+pnpm --filter api db:seed
 pnpm dev
 ```
 
+`pnpm dev` runs all four services together — the Next.js web app, the NestJS API, and both Go services:
+
 - Web: http://localhost:3000
 - API: http://localhost:4000/api/health · Swagger at http://localhost:4000/api/docs
-- Mailpit (local email): http://localhost:8025
+- PayMock (payment simulator): http://localhost:4100 — every paid checkout goes through it
+- Gate (waiting room): http://localhost:4200 — the drop event queues here
+- Mailpit (local email): http://localhost:8025 — ticket emails and QR codes land here
+
+The web app has to get port 3000. `WEB_ORIGIN` is the API's CORS allowlist and the browser opens the realtime socket straight at the API origin, so if Next falls back to 3001 the pages still render while live seat updates stop.
+
+Open http://localhost:3000 and use the demo buttons on the landing page — buyer, organizer, and staff each sign in with one click, no registration.
 
 Quality gates (same commands CI runs):
 
