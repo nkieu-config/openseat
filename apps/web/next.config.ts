@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const apiProxyTarget =
@@ -7,6 +8,8 @@ const apiProxyTarget =
     : "http://localhost:4000");
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
   async rewrites() {
     return [
       {

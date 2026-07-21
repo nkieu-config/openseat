@@ -67,7 +67,10 @@ import { TelemetryExceptionFilter } from './telemetry/telemetry-exception.filter
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      autoSchemaFile:
+        process.env.NODE_ENV === 'production'
+          ? true
+          : join(process.cwd(), 'src/schema.gql'),
       sortSchema: true,
       path: '/api/graphql',
       playground: false,

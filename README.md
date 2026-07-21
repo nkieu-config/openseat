@@ -74,6 +74,18 @@ The web app has to get port 3000. `WEB_ORIGIN` is the API's CORS allowlist and t
 
 Open http://localhost:3000 and use the demo buttons on the landing page — buyer, organizer, and staff each sign in with one click, no registration.
 
+### Run it with only Docker
+
+If you would rather not install Node, pnpm, and Go, the whole product also builds as four images and comes up with one command:
+
+```bash
+docker compose -f infra/docker-compose.full.yml up --build
+```
+
+Postgres, Redis, and Mailpit start first; a one-shot `migrate` service applies the migrations and seeds the demo data; then the API, both Go services, and the web app come up behind health checks. Same URLs as above. `docker compose -f infra/docker-compose.full.yml down -v` removes it all, database included.
+
+This is a demonstration path, not the dev loop — the images are production builds with no file watching, so `pnpm dev` stays the way to work on the code. The images are what the ECS migration in [docs/aws-production.md](docs/aws-production.md) would deploy.
+
 Quality gates (same commands CI runs):
 
 ```bash

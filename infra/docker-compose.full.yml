@@ -1,0 +1,113 @@
+name: openseat-full
+
+x-paymock-secrets: &paymock-secrets
+  PAYMOCK_API_KEY: paymock-demo-key
+  PAYMOCK_WEBHOOK_SECRET: paymock-demo-webhook-secret
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: openseat
+      POSTGRES_PASSWORD: openseat
+      POSTGRES_DB: openseat
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U openseat']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - '8025:8025'
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+      target: migrate
+    environment:
+      DATABASE_URL: postgresql://openseat:openseat@postgres:5432/openseat
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - '4000:4000'
+    environment:
+      <<: *paymock-secrets
+      DATABASE_URL: postgresql://openseat:openseat@postgres:5432/openseat
+      REDIS_URL: redis://redis:6379
+      PORT: '4000'
+      JWT_SECRET: demo-jwt-secret-change-me
+      GATE_ADMISSION_SECRET: gate-demo-admission-secret
+      WEB_ORIGIN: http://localhost:3000
+      APP_ORIGIN: http://localhost:3000
+      PAYMOCK_URL: http://paymock:4100
+      API_PUBLIC_URL: http://api:4000
+      SMTP_HOST: mailpit
+      SMTP_PORT: '1025'
+      MAIL_FROM: OpenSeat <tickets@openseat.local>
+      APP_VERSION: docker
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  paymock:
+    build:
+      context: ../services/paymock
+    ports:
+      - '4100:4100'
+    environment:
+      <<: *paymock-secrets
+      APP_ENV: production
+      PORT: '4100'
+      PAYMOCK_PUBLIC_URL: http://localhost:4100
+
+  gate:
+    build:
+      context: ../services/gate
+    ports:
+      - '4200:4200'
+    environment:
+      APP_ENV: production
+      PORT: '4200'
+      REDIS_URL: redis://redis:6379
+      GATE_ADMISSION_SECRET: gate-demo-admission-secret
+      WEB_ORIGIN: http://localhost:3000
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        API_PROXY_TARGET: http://api:4000
+        NEXT_PUBLIC_API_ORIGIN: http://localhost:4000
+        NEXT_PUBLIC_GATE_ORIGIN: http://localhost:4200
+    ports:
+      - '3000:3000'
+    environment:
+      PORT: '3000'
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      api:
+        condition: service_healthy
