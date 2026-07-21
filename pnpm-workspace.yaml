@@ -6,6 +6,7 @@ packages:
 
 overrides:
   ioredis: ^5.11.1
+  js-yaml@4: ^4.3.0
   ws: ^8.21.0
 
 allowBuilds:
