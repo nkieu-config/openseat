@@ -9,6 +9,7 @@ import { AppModule } from './../src/app.module';
 import { OrdersService } from '../src/orders/orders.service';
 import { OutboxService } from '../src/outbox/outbox.service';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { RefundsService } from '../src/refunds/refunds.service';
 
 process.env.THROTTLE_LIMIT = '100000';
 
@@ -412,6 +413,43 @@ describe('Payments (e2e)', () => {
       where: { id: compensation.id },
     });
     expect(settledRefund.status).toBe('succeeded');
+  });
+
+  it('returns the money once when two compensations race for the same order', async () => {
+    const order = await createPaidGaOrder();
+    const payment = await prisma.payment.findUniqueOrThrow({
+      where: { orderId: order.id },
+    });
+    await app.get(OrdersService).expireOrder(order.id);
+
+    const refunds = app.get(RefundsService);
+    const compensate = () =>
+      refunds.compensateUnfulfilledPayment({
+        orderId: order.id,
+        amountSatang: 50_000,
+        providerIntentId: payment.providerIntentId,
+      });
+
+    const refundCallsBefore = refundCalls;
+    await Promise.all([compensate(), compensate()]);
+
+    const created = await prisma.refund.findMany({
+      where: { orderId: order.id },
+    });
+    expect(created).toHaveLength(1);
+    expect(created[0].idempotencyKey).toBe('system:compensation');
+    expect(created[0].requestedById).toBeNull();
+    expect(refundCalls - refundCallsBefore).toBe(1);
+
+    await expect(
+      prisma.refund.create({
+        data: {
+          orderId: order.id,
+          amountSatang: 50_000,
+          idempotencyKey: 'system:compensation',
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'P2002' });
   });
 
   it('acknowledges an unknown event type without cancelling the order', async () => {
