@@ -1,11 +1,14 @@
 import type { EventDetail } from "@openseat/contracts";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ServiceWarmer } from "@/components/service-warmer";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { apiBaseUrl } from "@/lib/api";
 import { formatEventDate } from "@/lib/format";
+import { gateOrigin } from "@/lib/gate";
+import { paymockOrigin } from "@/lib/paymock";
 import { DropSale } from "./drop-sale";
 import { RsvpCard } from "./rsvp-card";
 import { SeatPicker } from "./seat-picker";
@@ -47,9 +50,15 @@ export default async function EventPage({ params }: PageProps) {
 
   const soldOut = event.ticketTypes.every((type) => type.remaining === 0);
   const gaTypes = event.ticketTypes.filter((type) => type.kind === "ga");
+  const buyable = !soldOut && event.ticketTypes.some((type) => type.priceSatang > 0);
+  const warmOrigins = [
+    buyable ? paymockOrigin : null,
+    event.dropMode ? gateOrigin : null,
+  ].filter((origin): origin is string => origin !== null);
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-12">
+      <ServiceWarmer origins={warmOrigins} />
       <div className="grid gap-10 lg:grid-cols-[1fr_360px]">
         <article className="flex flex-col gap-6">
           <div className="relative h-40 overflow-hidden rounded-2xl border border-border sm:h-52">
