@@ -14,7 +14,6 @@ type MemberRecord = {
   role: string;
   userId: string | null;
   createdAt: Date;
-  user: { displayName: string } | null;
 };
 
 export type TeamMemberView = {
@@ -22,12 +21,15 @@ export type TeamMemberView = {
   email: string;
   role: string;
   linked: boolean;
-  displayName: string | null;
   createdAt: Date;
 };
 
-const MEMBER_INCLUDE = {
-  user: { select: { displayName: true } },
+const MEMBER_SELECT = {
+  id: true,
+  email: true,
+  role: true,
+  userId: true,
+  createdAt: true,
 };
 
 function isUniqueViolation(error: unknown): boolean {
@@ -43,7 +45,6 @@ function toView(member: MemberRecord): TeamMemberView {
     email: member.email,
     role: member.role,
     linked: member.userId !== null,
-    displayName: member.user?.displayName ?? null,
     createdAt: member.createdAt,
   };
 }
@@ -59,7 +60,7 @@ export class TeamService {
     await this.access.requireEventRole(eventId, userId, 'owner');
     const members = await this.prisma.teamMember.findMany({
       where: { eventId },
-      include: MEMBER_INCLUDE,
+      select: MEMBER_SELECT,
       orderBy: { createdAt: 'asc' },
     });
     return members.map(toView);
@@ -97,7 +98,7 @@ export class TeamService {
           userId: linkedUser?.id ?? null,
           linkedAt: linkedUser ? new Date() : null,
         },
-        include: MEMBER_INCLUDE,
+        select: MEMBER_SELECT,
       });
       return toView(member);
     } catch (error) {
@@ -125,7 +126,7 @@ export class TeamService {
     const updated = await this.prisma.teamMember.update({
       where: { id: memberId },
       data: { role },
-      include: MEMBER_INCLUDE,
+      select: MEMBER_SELECT,
     });
     return toView(updated);
   }

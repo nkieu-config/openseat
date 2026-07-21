@@ -27,7 +27,7 @@ Every technology choice has a written rationale with trade-offs — see [docs/ad
 - **The surge is load-tested** — the Go waiting room absorbs [~13,000 joins/second at p95 < 20ms with zero errors](docs/load-tests/gate-report.md).
 - **One request, traced across languages** — a browser fetch parents a span inside the Go gate over W3C traceparent ([the trace](docs/observability/trace-web-to-gate.png), [dashboard](docs/observability/dashboard.png)).
 - **The whole demo runs in CI** — 80+ API integration tests plus 9 browser journeys on every pull request.
-- **Every decision is written down** — 14 [ADRs](docs/adr) and a spec per milestone, each ending deployable.
+- **Every decision is written down** — 15 [ADRs](docs/adr) and a spec per milestone, each ending deployable.
 
 ## Architecture at a glance
 

@@ -14,7 +14,6 @@ type TeamMember = {
   email: string;
   role: string;
   linked: boolean;
-  displayName: string | null;
 };
 
 type Role = "manager" | "staff";
@@ -166,13 +165,8 @@ export function TeamPanel({ eventId }: { eventId: string }) {
               >
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-sm font-medium">
-                    {member.displayName ?? member.email}
+                    {member.email}
                   </span>
-                  {member.displayName ? (
-                    <span className="truncate text-xs text-muted-foreground">
-                      {member.email}
-                    </span>
-                  ) : null}
                 </div>
                 {member.linked ? null : (
                   <Badge variant="outline">pending</Badge>

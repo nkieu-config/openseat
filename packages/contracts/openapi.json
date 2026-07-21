@@ -1323,10 +1323,6 @@
           "linked": {
             "type": "boolean"
           },
-          "displayName": {
-            "type": "string",
-            "nullable": true
-          },
           "createdAt": {
             "type": "string"
           }
@@ -1336,7 +1332,6 @@
           "email",
           "role",
           "linked",
-          "displayName",
           "createdAt"
         ]
       },

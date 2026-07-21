@@ -22,6 +22,5 @@ export class TeamMemberDto {
   email: string;
   role: string;
   linked: boolean;
-  displayName: string | null;
   createdAt: string;
 }

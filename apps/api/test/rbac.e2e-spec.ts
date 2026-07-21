@@ -14,7 +14,6 @@ type MemberRow = {
   email: string;
   role: string;
   linked: boolean;
-  displayName: string | null;
   createdAt: string;
 };
 
@@ -101,7 +100,7 @@ describe('Team roster + access ladder (e2e)', () => {
     expect(member.email).toBe(crewEmail);
     expect(member.role).toBe('staff');
     expect(member.linked).toBe(false);
-    expect(member.displayName).toBeNull();
+    expect(member).not.toHaveProperty('displayName');
 
     const list = await listTeam(ownerToken).expect(200);
     const rows = list.body as MemberRow[];
@@ -117,7 +116,7 @@ describe('Team roster + access ladder (e2e)', () => {
       (row) => row.email === crewEmail,
     );
     expect(crew?.linked).toBe(true);
-    expect(crew?.displayName).toBe('Crew Person');
+    expect(crew).not.toHaveProperty('displayName');
   });
 
   it('links immediately when the email already has an account', async () => {
@@ -126,7 +125,7 @@ describe('Team roster + access ladder (e2e)', () => {
     );
     const member = res.body as MemberRow;
     expect(member.linked).toBe(true);
-    expect(member.displayName).toBe('Team Manager');
+    expect(member).not.toHaveProperty('displayName');
   });
 
   it('rejects duplicates, the owner email, and garbage', async () => {
