@@ -27,7 +27,8 @@ OpenSeat is a portfolio project built like a product: each of those is solved wi
 - **No double-selling, proven twice over** — an API race test puts [50 buyers on one seat](apps/api/test/seats.e2e-spec.ts) and asserts a single winner; a [two-browser Playwright journey](tests/e2e/specs/seat-race.spec.ts) shows the loser's seat turn held, live, with no reload. GA inventory gets the same treatment with [100 concurrent buyers](apps/api/test/orders.e2e-spec.ts).
 - **The surge is load-tested, not assumed** — the Go waiting room absorbed [~13,000 joins/second at p95 19.6ms with zero failed requests](docs/load-tests/gate-report.md) under k6.
 - **One request, traced across two languages** — a browser fetch parents a span inside the Go gate over W3C traceparent ([the trace](docs/observability/trace-web-to-gate.png), [the dashboard](docs/observability/dashboard.png)).
-- **The whole product runs in CI** — seven jobs on every push, covering lint, typecheck, unit and build, 80+ API integration tests against real Postgres and Redis, both Go suites under `-race`, 9 browser journeys, a dependency audit, and a smoke test that boots the built API image and probes it.
+- **The frontend is held to the same bar as the backend** — [axe runs on four pages every push](tests/e2e/specs/a11y.spec.ts) and finds zero violations at *any* impact level; the seat's keyboard and screen-reader contract has [its own tests](apps/web/src/app/events/[slug]/seat.test.tsx); Lighthouse scores the live seat map [96 performance, 100 accessibility, and zero layout shift](docs/lighthouse/report.md).
+- **The whole product runs in CI** — seven jobs on every push, covering lint, typecheck, unit and build, 80+ API integration tests against real Postgres and Redis, both Go suites under `-race`, 9 browser journeys and a four-page accessibility scan, a dependency audit, and a smoke test that boots the built API image and probes it.
 - **Every decision is written down** — 15 [ADRs](docs/adr), a spec and an implementation plan per milestone, and an [incident runbook](docs/runbook.md).
 
 ## Run it
@@ -108,7 +109,7 @@ A monolith, not microservices — [ADR 0001](docs/adr/0001-modular-monolith-firs
 
 The parts that would normally be a third-party widget or a vendor invoice — because those are the parts worth showing:
 
-- **The seat map and its editor** — pan, zoom, hit-testing, live seat states, drag-and-drop layout with undo/redo, all in hand-written SVG. No seat-map library. [`seat-picker.tsx`](apps/web/src/app/events/[slug]/seat-picker.tsx), [`seat-map-viewport.ts`](apps/web/src/lib/seat-map-viewport.ts)
+- **The seat map and its editor** — pan, zoom, hit-testing, live seat states, drag-and-drop layout with undo/redo, all in hand-written SVG. No seat-map library. Every seat is a real button: in the tab order unless it is sold, activated by Enter or Space, and named for a screen reader as "Stalls A4 — held". [`seat-picker.tsx`](apps/web/src/app/events/[slug]/seat-picker.tsx), [`seat.tsx`](apps/web/src/app/events/[slug]/seat.tsx), [`seat-map-viewport.ts`](apps/web/src/lib/seat-map-viewport.ts)
 - **The payment vendor** — PayMock signs over the raw body, retries with backoff, injects failures, and double-sends every webhook on purpose so idempotency is exercised forever. [`webhook.go`](services/paymock/webhook.go), [`signer.go`](services/paymock/signer.go)
 - **The waiting room** — a token-bucket admitter draining a Redis sorted set, minting a stateless admission JWT the API verifies by itself. [`admitter.go`](services/gate/admitter.go)
 - **Authentication** — argon2 passwords, short access tokens with refresh rotation, Google ID-token sign-in, and guest checkout.
