@@ -72,6 +72,7 @@ export const stackServers: WebServer[] = [
       API_PROXY_TARGET: API,
       NEXT_PUBLIC_API_ORIGIN: API,
       NEXT_PUBLIC_GATE_ORIGIN: GATE,
+      NEXT_PUBLIC_PAYMOCK_ORIGIN: PAYMOCK,
     },
   },
 ];

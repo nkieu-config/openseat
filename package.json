@@ -11,7 +11,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "e2e:build": "API_PROXY_TARGET=http://localhost:4000 NEXT_PUBLIC_API_ORIGIN=http://localhost:4000 NEXT_PUBLIC_GATE_ORIGIN=http://localhost:4200 turbo run build --filter=api --filter=web",
+    "e2e:build": "API_PROXY_TARGET=http://localhost:4000 NEXT_PUBLIC_API_ORIGIN=http://localhost:4000 NEXT_PUBLIC_GATE_ORIGIN=http://localhost:4200 NEXT_PUBLIC_PAYMOCK_ORIGIN=http://localhost:4100 turbo run build --filter=api --filter=web",
     "e2e": "pnpm run e2e:build && pnpm --filter @openseat/e2e e2e",
     "capture": "pnpm run e2e:build && pnpm --filter @openseat/e2e capture",
     "format": "prettier --write ."

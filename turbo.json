@@ -7,7 +7,12 @@
     },
     "build": {
       "dependsOn": ["^build", "db:generate"],
-      "env": ["API_PROXY_TARGET", "NEXT_PUBLIC_API_ORIGIN", "NEXT_PUBLIC_GATE_ORIGIN"],
+      "env": [
+        "API_PROXY_TARGET",
+        "NEXT_PUBLIC_API_ORIGIN",
+        "NEXT_PUBLIC_GATE_ORIGIN",
+        "NEXT_PUBLIC_PAYMOCK_ORIGIN"
+      ],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "lint": {},
