@@ -1,0 +1,29 @@
+name: Warm every service
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: api
+            url: https://openseat-api.onrender.com/api/health
+          - name: paymock
+            url: https://openseat-paymock.onrender.com/health
+          - name: gate
+            url: https://openseat-gate.onrender.com/health
+    steps:
+      - name: Wake ${{ matrix.service.name }}
+        run: |
+          started=$(date +%s)
+          curl -fsS --max-time 90 --retry 3 --retry-delay 10 --retry-all-errors \
+            "${{ matrix.service.url }}"
+          echo ""
+          echo "${{ matrix.service.name }} answered after $(( $(date +%s) - started ))s"
