@@ -16,7 +16,6 @@ import { api, apiErrorMessage } from '@/lib/api';
 import { getHoldKey } from '@/lib/hold-key';
 import { createEventSocket } from '@/lib/realtime';
 import {
-  CELL,
   PAD,
   mapHeight,
   mapWidth,
@@ -24,17 +23,7 @@ import {
   seatY,
   useSeatMapViewport,
 } from '@/lib/seat-map-viewport';
-
-const seatFill: Record<string, string> = {
-  available: 'fill-seat-available',
-  held: 'fill-seat-held',
-  sold: 'fill-seat-sold',
-  mine: 'fill-seat-selected',
-};
-
-function seatLabel(seat: SeatInfo): string {
-  return `${seat.section} ${seat.rowLabel}${seat.number}`;
-}
+import { Seat, seatFill, seatLabel } from './seat';
 
 function HoldCountdown({ expiresAt }: { expiresAt: number | null }) {
   const [now, setNow] = useState(() => Date.now());
@@ -228,54 +217,15 @@ export function SeatPicker({ eventId }: { eventId: string }) {
 
   const seatNodes = useMemo(
     () =>
-      (map?.seats ?? []).map((seat) => {
-        const x = seatX(seat.x);
-        const y = seatY(seat.y);
-        const fill = seat.mine ? seatFill.mine : seatFill[seat.status];
-        return (
-          <g key={seat.id}>
-            {seat.number === 1 ? (
-              <text
-                x={x - 12}
-                y={y + CELL / 2}
-                textAnchor="end"
-                dominantBaseline="central"
-                className="fill-muted-foreground font-mono"
-                fontSize="10"
-              >
-                {seat.rowLabel}
-              </text>
-            ) : null}
-            <rect
-              x={x}
-              y={y}
-              width={CELL}
-              height={CELL}
-              rx="8"
-              className={`${fill} outline-none transition-opacity ${
-                seat.status === 'sold'
-                  ? 'cursor-not-allowed stroke-foreground/40 [stroke-width:2px]'
-                  : 'cursor-pointer hover:opacity-80 focus-visible:stroke-ring focus-visible:[stroke-width:2.5px]'
-              }`}
-              style={
-                seat.mine ? { filter: 'drop-shadow(0 0 7px var(--seat-selected))' } : undefined
-              }
-              role="button"
-              tabIndex={seat.status === 'sold' ? -1 : 0}
-              aria-label={`${seatLabel(seat)} — ${seat.mine ? 'yours' : seat.status}`}
-              onClick={() => void toggleSeat(seat)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  void toggleSeat(seat);
-                }
-              }}
-            >
-              <title>{`${seatLabel(seat)} — ${seat.mine ? 'yours' : seat.status}`}</title>
-            </rect>
-          </g>
-        );
-      }),
+      (map?.seats ?? []).map((seat) => (
+        <Seat
+          key={seat.id}
+          seat={seat}
+          x={seatX(seat.x)}
+          y={seatY(seat.y)}
+          onToggle={(target) => void toggleSeat(target)}
+        />
+      )),
     [map, toggleSeat],
   );
 
