@@ -28,4 +28,19 @@ describe('Health (e2e)', () => {
     const body = response.body as { status: string };
     expect(body.status).toBe('ok');
   });
+
+  it('GET /api/health/ready reaches the database it claims to be ready for', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/health/ready')
+      .expect(200);
+    const body = response.body as {
+      status: string;
+      checks: Record<string, { status: string; latencyMs?: number }>;
+    };
+
+    expect(body.status).toBe('ready');
+    expect(body.checks.database.status).toBe('up');
+    expect(body.checks.database.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(['up', 'skipped']).toContain(body.checks.redis.status);
+  });
 });

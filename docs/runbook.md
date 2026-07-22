@@ -8,6 +8,16 @@ Conventions used below:
 - Traces (Tempo, TraceQL): `{ resource.service.name = "openseat-api" && status = error }`
 - Metrics (Mimir, PromQL): names as emitted by the API/Gate meters
 
+## First command for any API incident
+
+```bash
+curl -s https://openseat-api.onrender.com/api/health/ready | jq
+```
+
+It answers `200 ready` or `503 degraded` with a per-dependency verdict, so it separates "the process is gone" from "the process is fine and Postgres isn't" before you open a dashboard. Each check is bounded at 2 s and reports latency; a dependency that is merely unconfigured reads `skipped`, not `down`.
+
+`/api/health` is the **liveness** probe and stays deliberately shallow — it touches nothing. Render's `healthCheckPath` points there on purpose: Render restarts a service whose health check fails, and restarting an API because Postgres blinked turns one outage into a crash loop. Readiness is for triage and for the load balancer in the ECS topology (`docs/aws-production.md`), never for the restart trigger.
+
 ## 1. API asleep or down
 
 **Detect.** The RED row flatlines (request rate → 0) and the *API 5xx error rate* alert may fire if traffic errored before the stop; the keep-alive workflow's ping fails.
