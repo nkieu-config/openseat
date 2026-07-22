@@ -7,7 +7,7 @@
 
 ![Two buyers, one seat: a hold appearing live across browsers](docs/media/hero.gif)
 
-**[Live demo](https://openseat-ticket.vercel.app)** · [API docs](https://openseat-api.onrender.com/api/docs) · [API health](https://openseat-api.onrender.com/api/health) · **[Read the code in ten minutes](docs/tour.md)**
+**[Live demo](https://openseat-ticket.vercel.app)** · [API docs](https://openseat-api.onrender.com/api/docs) · [API readiness](https://openseat-api.onrender.com/api/health/ready) · **[Read the code in ten minutes](docs/tour.md)**
 
 Next.js · NestJS · Go · PostgreSQL · Redis — four services in one Turborepo, all of which come up locally with a single command. The demo needs no sign-up: the landing page signs you in as a buyer, an organizer, or door staff with one tap.
 
