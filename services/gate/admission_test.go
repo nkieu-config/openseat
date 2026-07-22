@@ -1,44 +1,51 @@
 package main
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
 
-func TestSignAndVerifyRoundTrip(t *testing.T) {
-	secret := "test-admission-secret"
-	issued := time.Unix(1700000000, 0)
-	token := signAdmission(secret, "v:abc", "evt_1", issued, 5*time.Minute)
-	claims, err := verifyAdmission(secret, token, issued.Add(time.Minute))
+type admissionVector struct {
+	Secret       string `json:"secret"`
+	VisitorID    string `json:"visitorId"`
+	EventID      string `json:"eventId"`
+	IssuedAtUnix int64  `json:"issuedAtUnix"`
+	TTLSeconds   int64  `json:"ttlSeconds"`
+	Token        string `json:"token"`
+}
+
+func loadAdmissionVector(t *testing.T) admissionVector {
+	t.Helper()
+	path := filepath.Join("..", "..", "packages", "contracts", "admission-token.vector.json")
+	raw, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("verify failed: %v", err)
+		t.Fatalf("read admission vector: %v", err)
 	}
-	if claims.Sub != "v:abc" || claims.EventID != "evt_1" {
-		t.Fatalf("unexpected claims: %+v", claims)
+	var vector admissionVector
+	if err := json.Unmarshal(raw, &vector); err != nil {
+		t.Fatalf("parse admission vector: %v", err)
 	}
+	return vector
 }
 
-func TestVerifyRejectsWrongSecret(t *testing.T) {
-	issued := time.Unix(1700000000, 0)
-	token := signAdmission("right", "v", "e", issued, time.Minute)
-	if _, err := verifyAdmission("wrong", token, issued); err == nil {
-		t.Fatal("expected signature rejection with wrong secret")
-	}
-}
+func TestSignAdmissionMatchesTheSharedVector(t *testing.T) {
+	vector := loadAdmissionVector(t)
 
-func TestVerifyRejectsTamperedSignature(t *testing.T) {
-	issued := time.Unix(1700000000, 0)
-	token := signAdmission("s", "v", "e", issued, time.Minute)
-	tampered := token[:len(token)-2] + "xx"
-	if _, err := verifyAdmission("s", tampered, issued); err == nil {
-		t.Fatal("expected rejection of tampered token")
-	}
-}
+	token := signAdmission(
+		vector.Secret,
+		vector.VisitorID,
+		vector.EventID,
+		time.Unix(vector.IssuedAtUnix, 0),
+		time.Duration(vector.TTLSeconds)*time.Second,
+	)
 
-func TestVerifyRejectsExpired(t *testing.T) {
-	issued := time.Unix(1700000000, 0)
-	token := signAdmission("s", "v", "e", issued, time.Minute)
-	if _, err := verifyAdmission("s", token, issued.Add(2*time.Minute)); err == nil {
-		t.Fatal("expected rejection of expired token")
+	if token != vector.Token {
+		t.Fatalf(
+			"gate no longer produces the token the API verifies against\n  want %s\n  got  %s",
+			vector.Token, token,
+		)
 	}
 }

@@ -1,0 +1,9 @@
+{
+  "note": "Cross-service contract for the drop-sale admission token. The gate service (Go) signs this HMAC-SHA256 JWT; the API (NestJS) verifies it. Both services test against this pinned vector so a change to the byte format on one side fails loudly instead of silently 403-ing the on-sale. Regenerate only by running services/gate signAdmission against the inputs below and updating token to match.",
+  "secret": "gate-dev-admission-secret",
+  "visitorId": "v:contract-vector",
+  "eventId": "evt_contract_vector",
+  "issuedAtUnix": 1700000000,
+  "ttlSeconds": 300,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2OmNvbnRyYWN0LXZlY3RvciIsImV2ZW50SWQiOiJldnRfY29udHJhY3RfdmVjdG9yIiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjE3MDAwMDAzMDB9.kTrM_KSF1cs7KGgYbuYlijwH6-LTbsD46ELq4zvLnAg"
+}
