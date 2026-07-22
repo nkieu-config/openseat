@@ -82,7 +82,7 @@ describe('Reserved seating (e2e)', () => {
           {
             name: 'Front',
             rows: 2,
-            cols: 5,
+            cols: 8,
             tierName: 'Front zone',
             priceSatang: 0,
           },
@@ -98,7 +98,7 @@ describe('Reserved seating (e2e)', () => {
       .get(`/api/events/${eventId}/seat-map`)
       .expect(200);
     seatIds = (mapRes.body as SeatMapResponse).seats.map((seat) => seat.id);
-    expect(seatIds).toHaveLength(10);
+    expect(seatIds).toHaveLength(16);
   });
 
   afterAll(async () => {
@@ -294,5 +294,95 @@ describe('Reserved seating (e2e)', () => {
 
     const remaining = await prisma.hold.count({ where: { seatId } });
     expect(remaining).toBe(0);
+  });
+
+  it('lets a holder release its own seat and frees it for the next buyer', async () => {
+    const seatId = seatIds[7];
+    await request(app.getHttpServer())
+      .post(`/api/events/${eventId}/holds`)
+      .set('X-Hold-Key', 'release-owner-key')
+      .send({ seatId })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .delete(`/api/events/${eventId}/holds/${seatId}`)
+      .set('X-Hold-Key', 'release-owner-key')
+      .expect(204);
+
+    expect(await prisma.hold.count({ where: { eventId, seatId } })).toBe(0);
+
+    const mapRes = await request(app.getHttpServer())
+      .get(`/api/events/${eventId}/seat-map`)
+      .expect(200);
+    const status = (mapRes.body as SeatMapResponse).seats.find(
+      (seat) => seat.id === seatId,
+    )?.status;
+    expect(status).toBe('available');
+
+    await request(app.getHttpServer())
+      .post(`/api/events/${eventId}/holds`)
+      .set('X-Hold-Key', 'next-buyer-key')
+      .send({ seatId })
+      .expect(201);
+  });
+
+  it('will not let a different hold key release a seat it does not hold', async () => {
+    const seatId = seatIds[8];
+    await request(app.getHttpServer())
+      .post(`/api/events/${eventId}/holds`)
+      .set('X-Hold-Key', 'rightful-holder-key')
+      .send({ seatId })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .delete(`/api/events/${eventId}/holds/${seatId}`)
+      .set('X-Hold-Key', 'impostor-holder-key')
+      .expect(204);
+
+    const hold = await prisma.hold.findUnique({
+      where: { eventId_seatId: { eventId, seatId } },
+    });
+    expect(hold?.holderKey).toBe('rightful-holder-key');
+  });
+
+  it('treats releasing a seat nobody holds as a no-op', async () => {
+    const seatId = seatIds[9];
+
+    await request(app.getHttpServer())
+      .delete(`/api/events/${eventId}/holds/${seatId}`)
+      .set('X-Hold-Key', 'nobody-here-key')
+      .expect(204);
+
+    expect(await prisma.hold.count({ where: { eventId, seatId } })).toBe(0);
+  });
+
+  it('refuses a release with no hold key', async () => {
+    await request(app.getHttpServer())
+      .delete(`/api/events/${eventId}/holds/${seatIds[10]}`)
+      .expect(400);
+  });
+
+  it('keeps a hold that a live order depends on when its holder asks to release it', async () => {
+    const seatId = seatIds[11];
+    await request(app.getHttpServer())
+      .post(`/api/events/${eventId}/holds`)
+      .set('X-Hold-Key', 'bound-order-key')
+      .send({ seatId })
+      .expect(201);
+    await prisma.hold.update({
+      where: { eventId_seatId: { eventId, seatId } },
+      data: { orderId: 'order-that-reserved-this-seat' },
+    });
+
+    await request(app.getHttpServer())
+      .delete(`/api/events/${eventId}/holds/${seatId}`)
+      .set('X-Hold-Key', 'bound-order-key')
+      .expect(204);
+
+    const hold = await prisma.hold.findUnique({
+      where: { eventId_seatId: { eventId, seatId } },
+    });
+    expect(hold).not.toBeNull();
+    expect(hold?.orderId).toBe('order-that-reserved-this-seat');
   });
 });

@@ -90,7 +90,7 @@ export class HoldsService {
 
   async release(eventId: string, seatId: string, holderKey: string) {
     const deleted = await this.prisma.hold.deleteMany({
-      where: { eventId, seatId, holderKey },
+      where: { eventId, seatId, holderKey, orderId: null },
     });
     if (deleted.count > 0) {
       this.realtime.seatsChanged(eventId, { released: [seatId] });
