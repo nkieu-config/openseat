@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { randomBytes, randomUUID } from 'crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from './generated/prisma/client';
+import { seedRefusalReason } from './seed-target';
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
@@ -274,6 +275,16 @@ async function seedDropEvent(organizerId: string): Promise<number> {
 }
 
 async function main() {
+  const refusal = seedRefusalReason(
+    process.env.DATABASE_URL,
+    process.env.SEED_ALLOW_REMOTE === '1',
+  );
+  if (refusal) {
+    process.stderr.write(`${refusal}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
   const organizer = await upsertDemoUser(
     'demo-organizer@openseat.dev',
     'OpenSeat Demo Organizer',

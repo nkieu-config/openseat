@@ -26,7 +26,7 @@ pnpm turbo run lint typecheck build test   # the CI quality gate
 pnpm --filter api test:e2e                 # integration tests (needs compose stack)
 pnpm e2e                                   # browser journeys (needs compose stack; stop `pnpm dev` first)
 pnpm --filter api db:migrate               # prisma migrate dev
-pnpm --filter api db:seed                  # reseed the demo event + demo users
+pnpm --filter api db:seed                  # reseed the demo event + demo users (refuses any host but localhost/compose)
 pnpm --filter api openapi:dump             # regenerate packages/contracts/openapi.json after API changes
 pnpm capture                               # refresh docs/media (hero GIF + screenshots); needs free ports like pnpm e2e
 ```
