@@ -100,7 +100,7 @@ func (q *Queue) Simulate(ctx context.Context, eventID string, count int) (int64,
 	members := make([]redis.Z, 0, count)
 	for i := 0; i < count; i++ {
 		members = append(members, redis.Z{
-			Score:  base + float64(i)/float64(count+1),
+			Score:  base + float64(i+1)/float64(count+1),
 			Member: botPrefix + randomID(),
 		})
 	}
