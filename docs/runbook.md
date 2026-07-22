@@ -1,6 +1,6 @@
 # OpenSeat Runbook
 
-How to detect, diagnose, and mitigate the seven incidents most likely to hit this deployment. Telemetry lives in Grafana Cloud (dashboard: **OpenSeat Ops**, exported to `docs/observability/openseat-ops-dashboard.json`); services export OTLP directly per ADR 0009.
+How to detect, diagnose, and mitigate the eight incidents most likely to hit this deployment. Telemetry lives in Grafana Cloud (dashboard: **OpenSeat Ops**, exported to `docs/observability/openseat-ops-dashboard.json`); services export OTLP directly per ADR 0009.
 
 Conventions used below:
 
@@ -76,6 +76,42 @@ It answers `200 ready` or `503 degraded` with a per-dependency verdict, so it se
 - *The webhook landed but matched nothing.* `webhook_events_total{outcome="processed"}` moved and the log shows a `payment.refunded` line, yet the refund is still `pending`. That means `handleRefunded` found `updated.count === 0` — the event's `reference` did not match any pending refund id. The money moved on the provider while our refund row never settled. This is the dangerous case and it means a lost or mismatched `reference` (ADR 0011's race is *supposed* to prevent exactly this, so a real occurrence points at a bug in the echo, not a transient).
 
 **Mitigate.** PayMock does not expose a webhook re-send, so recovery runs from our side. For the *never-landed* case, the organizer's **Retry** button re-runs the money leg (`POST …/refunds/:refundId/retry`); PayMock refunds again and re-emits the event, and dedup by `provider_event_id` plus the guarded `updateMany` make the extra delivery safe — a refund settles at most once. Wake PayMock first (`curl -sS https://<paymock-origin>/health`) if incident 6's signature is also present. For the *settled-but-unmatched* case, do **not** blindly retry — the provider has already moved the money, so a second refund would over-refund the intent (PayMock's `over_refund` guard will reject it, but the pending row still needs closing). Reconcile by hand: match the `payment.refunded` event's `reference` to the refund row, confirm the provider's cumulative `refundedSatang`, and settle the row directly, then file the `reference`-echo bug that let it slip.
+
+## 8. Data lost or corrupted
+
+**The clock matters more than the diagnosis.** Neon's Free plan keeps **6 hours** of history. Past that there is no backup of any kind — no dump, no snapshot, nothing. If you suspect data loss, restore first and investigate from the restored branch, because every minute spent diagnosing spends the window.
+
+**Detect.** Orders, tickets or events that existed are gone or wrong: a buyer reports a vanished ticket, the console's revenue drops without matching refunds, `orders_paid_total` is flat while the roster shrinks, or a check-in that worked yesterday says the ticket does not exist.
+
+**Diagnose.** Four causes, most likely first.
+
+1. **The seed ran against the deployed database.** It deletes every order, ticket, payment, refund and team member on `bangkok-indie-fest` and `midnight-drop`, then recreates them — which on this deployment is all real purchase history. `apps/api/src/seed-target.ts` now refuses any host that is not localhost or the compose stack, so this needs `SEED_ALLOW_REMOTE=1` to happen at all. Confirm by looking for a burst of identical `createdAt` values on the demo events' orders.
+2. **A migration did it.** `prisma migrate deploy` runs in the release path, so a destructive or failed-halfway migration lands without review. Check `_prisma_migrations` for the most recent row and compare its `finished_at` against when the data went missing.
+3. **A hand-written statement.** An `UPDATE` or `DELETE` run in a SQL console without a `WHERE`, usually while chasing another incident.
+4. **Neon's side.** Rare, and the one you cannot cause. Check the Neon status page before assuming it is yours.
+
+**Mitigate — restore the branch.** Neon restores in place; the connection string does not change, so nothing in Render or Vercel needs editing. Existing connections drop briefly and reconnect on their own.
+
+```bash
+neon branches list --project-id <project>
+neon branches restore main '^self@2026-07-22T09:15:00Z' \
+  --preserve-under-name main_before_restore
+```
+
+`^self` means "this branch's own history"; the timestamp is RFC 3339 in UTC and must be **inside the 6-hour window**. `--preserve-under-name` is mandatory for a self-restore and is also the safety net — the pre-restore state survives under that name, so a restore aimed at the wrong minute is itself reversible. Neon additionally keeps a `main_old_<timestamp>` branch automatically.
+
+Pick the timestamp from the *last known good* moment, not from when you noticed. If you are unsure, restore to a branch instead and read it before touching `main`:
+
+```bash
+neon branches create --project-id <project> --name inspect \
+  --parent main@2026-07-22T09:15:00Z
+```
+
+**Afterwards.** Run `pnpm --filter api db:migrate:status` against the restored database — a restore rewinds schema as well as rows, so a restore to before a migration leaves the deployed API expecting columns that no longer exist. Re-apply with `prisma migrate deploy` if the status says so. Then hit `/api/health/ready` and re-check one known order end to end.
+
+**What does not come back.** Anything written in the minutes between the restore point and now — genuinely gone, and the reason to pick the restore point carefully. Redis is not part of this: holds live in Postgres (ADR 0002) and the waiting-room queue is ephemeral by design (ADR 0007), so a restore does not need Redis to agree with it. In-flight PayMock intents are held by PayMock, which forgets on restart anyway; orders left `awaiting_payment` expire on their own.
+
+**Prevention, in order of value.** The seed guard above closes the most likely cause. The 6-hour window is the real exposure and it is a plan limit, not a setting — the Launch plan raises it to 7 days, which is the single cheapest durability upgrade available to this deployment and is what to buy first if it ever holds anything that matters. Before any deploy carrying a migration, read the SQL and ask what it does to existing rows; the `db66b86` enum swap is the worked example, and it is why `SELECT count(*) FROM orders WHERE status::text = 'pending'` belongs in the pre-deploy check.
 
 ## Escalation notes
 
