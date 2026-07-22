@@ -30,6 +30,32 @@ test('a seat one buyer takes turns held in the other browser, with no reload', a
   await buyerB.close();
 });
 
+test('a seat one buyer releases turns available again in the other browser, with no reload', async ({
+  browser,
+}) => {
+  const buyerA = await guestContext(browser);
+  const buyerB = await guestContext(browser);
+  const pageA = await buyerA.newPage();
+  const pageB = await buyerB.newPage();
+
+  await pageA.goto('/events/bangkok-indie-fest');
+  await pageB.goto('/events/bangkok-indie-fest');
+
+  const label = await firstAvailableSeat(pageA, 'Front');
+  await expectSeatStatus(pageB, label, 'available');
+
+  await seat(pageA, label).click();
+  await expectSeatStatus(pageA, label, 'yours');
+  await expectSeatStatus(pageB, label, 'held');
+
+  await seat(pageA, label).click();
+  await expectSeatStatus(pageA, label, 'available');
+  await expectSeatStatus(pageB, label, 'available');
+
+  await buyerA.close();
+  await buyerB.close();
+});
+
 test('a buyer whose live updates never arrive is refused by the server', async ({ browser }) => {
   const buyerA = await guestContext(browser);
   const buyerB = await guestContext(browser);
