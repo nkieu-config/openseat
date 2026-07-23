@@ -2,7 +2,7 @@
 
 A ~3.5-minute screen recording that shows the product working, not slides. Record at 1280×720+, dark theme, on the live site (`openseat-ticket.vercel.app`). Each shot lists what to do and one line to say. Keep the cursor deliberate; let realtime moments breathe.
 
-> Tip: open two browser windows side by side for the realtime beats (Shots 2 and 5). The demo reseeds on every deploy, so grab as many tickets as you like.
+> Tip: open two browser windows side by side for the realtime beats (Shots 2 and 5). There is plenty of demo inventory for a full run-through; deploys leave the data untouched, so to reset the demo to a clean slate reseed it manually (`SEED_ALLOW_REMOTE=1`, see runbook incident 8).
 
 ## Shot 1 — The promise (0:00–0:15)
 
