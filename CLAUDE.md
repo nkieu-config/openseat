@@ -20,15 +20,15 @@ Turborepo + pnpm workspaces:
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d
-pnpm dev                                   # all four: web :3000, api :4000, paymock :4100, gate :4200
-pnpm --filter @openseat/paymock dev        # or run one service on its own (same as `go -C services/paymock run .`)
-pnpm turbo run lint typecheck build test   # the CI quality gate
-pnpm --filter api test:e2e                 # integration tests (needs compose stack)
-pnpm e2e                                   # browser journeys (needs compose stack; stop `pnpm dev` first)
-pnpm --filter api db:migrate               # prisma migrate dev
-pnpm --filter api db:seed                  # reseed the demo event + demo users (refuses any host but localhost/compose)
-pnpm --filter api openapi:dump             # regenerate packages/contracts/openapi.json after API changes
-pnpm capture                               # refresh docs/media (hero GIF + screenshots); needs free ports like pnpm e2e
+pnpm dev                                     # all four: web :3000, api :4000, paymock :4100, gate :4200
+pnpm --filter @openseat/paymock dev          # or run one service on its own (same as `go -C services/paymock run .`)
+pnpm turbo run lint typecheck build test     # the CI quality gate
+pnpm --filter @openseat/api test:e2e         # integration tests (needs compose stack)
+pnpm e2e                                     # browser journeys (needs compose stack; stop `pnpm dev` first)
+pnpm --filter @openseat/api db:migrate       # prisma migrate dev
+pnpm --filter @openseat/api db:seed          # reseed the demo event + demo users (refuses any host but localhost/compose)
+pnpm --filter @openseat/api openapi:dump     # regenerate packages/contracts/openapi.json after API changes
+pnpm capture                                 # refresh docs/media (hero GIF + screenshots); needs free ports like pnpm e2e
 ```
 
 After changing any controller or DTO, run `openapi:dump` then `pnpm --filter @openseat/contracts build` so the web app's typed client stays in sync. The web app talks to the API through a same-origin Next.js rewrite (`/api/*`); see ADR 0004.

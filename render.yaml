@@ -15,7 +15,7 @@ services:
     name: openseat-api
     runtime: node
     plan: free
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter api db:generate && pnpm --filter api build && pnpm --filter api db:migrate:deploy
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @openseat/api db:generate && pnpm --filter @openseat/api build && pnpm --filter @openseat/api db:migrate:deploy
     startCommand: node apps/api/dist/main.js
     healthCheckPath: /api/health
     envVars:

@@ -24,7 +24,7 @@ const shared = {
 export const stackServers: WebServer[] = [
   {
     ...shared,
-    command: 'pnpm --filter api start:prod',
+    command: 'pnpm --filter @openseat/api start:prod',
     url: `${API}/api/health`,
     env: {
       DATABASE_URL,
@@ -65,7 +65,7 @@ export const stackServers: WebServer[] = [
   },
   {
     ...shared,
-    command: 'pnpm --filter web start',
+    command: 'pnpm --filter @openseat/web start',
     url: WEB,
     env: {
       PORT: '3000',

@@ -24,7 +24,7 @@
     "typecheck": {
       "dependsOn": ["^build", "db:generate"]
     },
-    "web#typecheck": {
+    "@openseat/web#typecheck": {
       "dependsOn": ["build"]
     },
     "@openseat/contracts#typecheck": {

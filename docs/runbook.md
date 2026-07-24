@@ -109,7 +109,7 @@ neon branches create --project-id <project> --name inspect \
   --parent main@2026-07-22T09:15:00Z
 ```
 
-**Afterwards.** Run `pnpm --filter api db:migrate:status` against the restored database — a restore rewinds schema as well as rows, so a restore to before a migration leaves the deployed API expecting columns that no longer exist. Re-apply with `prisma migrate deploy` if the status says so. Then hit `/api/health/ready` and re-check one known order end to end.
+**Afterwards.** Run `pnpm --filter @openseat/api db:migrate:status` against the restored database — a restore rewinds schema as well as rows, so a restore to before a migration leaves the deployed API expecting columns that no longer exist. Re-apply with `prisma migrate deploy` if the status says so. Then hit `/api/health/ready` and re-check one known order end to end.
 
 **What does not come back.** Anything written in the minutes between the restore point and now — genuinely gone, and the reason to pick the restore point carefully. Redis is not part of this: holds live in Postgres (ADR 0002) and the waiting-room queue is ephemeral by design (ADR 0007), so a restore does not need Redis to agree with it. In-flight PayMock intents are held by PayMock, which forgets on restart anyway; orders left `awaiting_payment` expire on their own.
 

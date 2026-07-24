@@ -9,11 +9,11 @@ COPY packages/contracts/package.json packages/contracts/
 COPY services/gate/package.json services/gate/
 COPY services/paymock/package.json services/paymock/
 COPY tests/e2e/package.json tests/e2e/
-RUN pnpm install --frozen-lockfile --filter api...
+RUN pnpm install --frozen-lockfile --filter @openseat/api...
 COPY apps/api apps/api
 COPY packages packages
-RUN pnpm --filter api db:generate && pnpm --filter api build
-RUN pnpm --filter api deploy --prod --legacy /out
+RUN pnpm --filter @openseat/api db:generate && pnpm --filter @openseat/api build
+RUN pnpm --filter @openseat/api deploy --prod --legacy /out
 RUN cd /out/node_modules/.pnpm && rm -rf \
       prisma@* \
       @prisma+studio-core@* \

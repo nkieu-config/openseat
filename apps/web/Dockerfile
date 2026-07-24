@@ -9,7 +9,7 @@ COPY packages/contracts/package.json packages/contracts/
 COPY services/gate/package.json services/gate/
 COPY services/paymock/package.json services/paymock/
 COPY tests/e2e/package.json tests/e2e/
-RUN pnpm install --frozen-lockfile --filter web...
+RUN pnpm install --frozen-lockfile --filter @openseat/web...
 COPY apps/web apps/web
 COPY packages packages
 ARG API_PROXY_TARGET=http://localhost:4000
@@ -20,7 +20,7 @@ ENV API_PROXY_TARGET=$API_PROXY_TARGET \
     NEXT_PUBLIC_API_ORIGIN=$NEXT_PUBLIC_API_ORIGIN \
     NEXT_PUBLIC_GATE_ORIGIN=$NEXT_PUBLIC_GATE_ORIGIN \
     NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
-RUN pnpm --filter @openseat/contracts build && pnpm --filter web build
+RUN pnpm --filter @openseat/contracts build && pnpm --filter @openseat/web build
 
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production

@@ -48,7 +48,7 @@ Postgres, Redis, and Mailpit start first; a one-shot `migrate` service applies m
 ```bash
 docker compose -f infra/docker-compose.yml up -d
 pnpm install
-pnpm --filter api db:generate && pnpm --filter api db:migrate && pnpm --filter api db:seed
+pnpm --filter @openseat/api db:generate && pnpm --filter @openseat/api db:migrate && pnpm --filter @openseat/api db:seed
 pnpm dev
 ```
 
@@ -68,7 +68,7 @@ Quality gates, the same commands CI runs:
 
 ```bash
 pnpm turbo run lint typecheck build test
-pnpm --filter api test:e2e
+pnpm --filter @openseat/api test:e2e
 pnpm e2e
 ```
 
