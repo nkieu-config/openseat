@@ -57,12 +57,15 @@ export class CheckinService {
       where: { id: ticket.id, status: 'issued' },
       data: { status: 'checked_in', checkedInAt: new Date() },
     });
-    ticketsCheckedIn.add(1, {
-      result: updated.count === 1 ? 'admitted' : 'duplicate',
-    });
     const fresh = await this.prisma.ticket.findUniqueOrThrow({
       where: { id: ticket.id },
       include: ATTENDEE_INCLUDE,
+    });
+    if (updated.count === 0 && fresh.status === 'void') {
+      throw new BadRequestException('Ticket is void');
+    }
+    ticketsCheckedIn.add(1, {
+      result: updated.count === 1 ? 'admitted' : 'duplicate',
     });
     return {
       outcome: updated.count === 1 ? 'checked_in' : 'already_checked_in',
