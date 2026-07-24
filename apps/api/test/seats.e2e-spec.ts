@@ -385,4 +385,55 @@ describe('Reserved seating (e2e)', () => {
     expect(hold).not.toBeNull();
     expect(hold?.orderId).toBe('order-that-reserved-this-seat');
   });
+
+  describe('the holds a buyer can recover', () => {
+    const holderKey = 'recover-my-holds-key';
+
+    function listMine(key?: string) {
+      const req = request(app.getHttpServer()).get(
+        `/api/events/${eventId}/holds/mine`,
+      );
+      return key ? req.set('X-Hold-Key', key) : req;
+    }
+
+    it('lists every seat that key is still holding', async () => {
+      const mine = [seatIds[12], seatIds[13]];
+      for (const seatId of mine) {
+        await request(app.getHttpServer())
+          .post(`/api/events/${eventId}/holds`)
+          .set('X-Hold-Key', holderKey)
+          .send({ seatId })
+          .expect(201);
+      }
+
+      const res = await listMine(holderKey).expect(200);
+
+      const rows = res.body as { seatId: string; expiresAt: string }[];
+      expect(rows.map((row) => row.seatId).sort()).toEqual([...mine].sort());
+      expect(new Date(rows[0].expiresAt).getTime()).toBeGreaterThan(Date.now());
+    });
+
+    it('shows a different hold key none of them', async () => {
+      const res = await listMine('a-totally-different-key').expect(200);
+
+      expect(res.body).toEqual([]);
+    });
+
+    it('drops a seat from the list the moment its hold expires', async () => {
+      await prisma.hold.updateMany({
+        where: { eventId, seatId: seatIds[12] },
+        data: { expiresAt: new Date(Date.now() - 1000) },
+      });
+
+      const res = await listMine(holderKey).expect(200);
+
+      expect(
+        (res.body as { seatId: string }[]).map((row) => row.seatId),
+      ).toEqual([seatIds[13]]);
+    });
+
+    it('refuses a listing with no hold key', async () => {
+      await listMine().expect(400);
+    });
+  });
 });

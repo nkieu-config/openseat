@@ -464,6 +464,37 @@ describe('Access ladder across the console (e2e)', () => {
     await patchEvent(managerToken, outsiderEventId).expect(404);
   });
 
+  describe('the events a member calls their own', () => {
+    function listMine(token?: string) {
+      const req = request(app.getHttpServer()).get('/api/events/mine');
+      return token ? req.set('Authorization', `Bearer ${token}`) : req;
+    }
+
+    async function idsFor(token: string): Promise<string[]> {
+      const res = await listMine(token).expect(200);
+      return (res.body as { id: string }[]).map((event) => event.id);
+    }
+
+    it('lists an event for the owner who created it', async () => {
+      expect(await idsFor(ownerToken)).toContain(eventId);
+    });
+
+    it('lists that same event for a staff member of its team', async () => {
+      expect(await idsFor(staffToken)).toContain(eventId);
+    });
+
+    it('keeps it out of the list of someone with no seat at the table', async () => {
+      const ids = await idsFor(outsiderToken);
+
+      expect(ids).not.toContain(eventId);
+      expect(ids).toContain(outsiderEventId);
+    });
+
+    it('refuses an anonymous request', async () => {
+      await listMine().expect(401);
+    });
+  });
+
   it('revokes access the instant a member is removed', async () => {
     await request(app.getHttpServer())
       .delete(`/api/events/${eventId}/team/${staffMemberId}`)
