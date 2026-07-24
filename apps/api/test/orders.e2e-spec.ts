@@ -32,6 +32,7 @@ describe('Orders (e2e)', () => {
   let accessToken: string;
   const organizerEmail = `orders-e2e-${process.pid}-${Date.now()}@example.com`;
   const createdEventIds: string[] = [];
+  const buyerEmails: string[] = [];
 
   async function createPublishedEvent(
     quantity: number,
@@ -89,7 +90,9 @@ describe('Orders (e2e)', () => {
       where: { eventId: { in: createdEventIds } },
     });
     await prisma.event.deleteMany({ where: { id: { in: createdEventIds } } });
-    await prisma.user.deleteMany({ where: { email: organizerEmail } });
+    await prisma.user.deleteMany({
+      where: { email: { in: [organizerEmail, ...buyerEmails] } },
+    });
     await app.close();
   });
 
@@ -302,5 +305,72 @@ describe('Orders (e2e)', () => {
         data: { remaining: -1 },
       }),
     ).rejects.toThrow(/ticket_types_remaining_non_negative/);
+  });
+
+  describe('the ticket list a signed-in buyer sees', () => {
+    async function registerBuyer(label: string): Promise<string> {
+      const email = `orders-buyer-${label}-${process.pid}-${Date.now()}@example.com`;
+      buyerEmails.push(email);
+      const res = await request(app.getHttpServer())
+        .post('/api/auth/register')
+        .send({ email, password: 'buyer-pass', displayName: 'Buyer' })
+        .expect(201);
+      return (res.body as { accessToken: string }).accessToken;
+    }
+
+    async function buyOne(
+      eventId: string,
+      ticketTypeId: string,
+      token: string,
+    ) {
+      await request(app.getHttpServer())
+        .post(`/api/events/${eventId}/orders`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          items: [{ ticketTypeId, quantity: 1 }],
+          buyerEmail: 'signed-in-buyer@example.com',
+          buyerName: 'Signed In Buyer',
+        })
+        .expect(201);
+    }
+
+    it('returns the buyer own tickets with the event and tier joined', async () => {
+      const event = await createPublishedEvent(5);
+      const token = await registerBuyer('owner');
+      await buyOne(event.id, event.ticketTypes[0].id, token);
+
+      const res = await request(app.getHttpServer())
+        .get('/api/me/tickets')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const tickets = res.body as {
+        event: { id: string };
+        ticketType: { name: string };
+        seat: unknown;
+      }[];
+      expect(tickets).toHaveLength(1);
+      expect(tickets[0].event.id).toBe(event.id);
+      expect(tickets[0].ticketType.name).toBe('GA');
+      expect(tickets[0].seat).toBeNull();
+    });
+
+    it('shows another signed-in user none of those tickets', async () => {
+      const event = await createPublishedEvent(5);
+      const buyer = await registerBuyer('holder');
+      const stranger = await registerBuyer('stranger');
+      await buyOne(event.id, event.ticketTypes[0].id, buyer);
+
+      const res = await request(app.getHttpServer())
+        .get('/api/me/tickets')
+        .set('Authorization', `Bearer ${stranger}`)
+        .expect(200);
+
+      expect(res.body).toEqual([]);
+    });
+
+    it('refuses an anonymous request', async () => {
+      await request(app.getHttpServer()).get('/api/me/tickets').expect(401);
+    });
   });
 });
