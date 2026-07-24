@@ -1,4 +1,4 @@
 export class HoldDto {
-  seatId: string;
-  expiresAt: string;
+  seatId!: string;
+  expiresAt!: string;
 }

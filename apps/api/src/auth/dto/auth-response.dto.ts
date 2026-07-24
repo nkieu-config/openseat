@@ -1,11 +1,11 @@
 export class PublicUserDto {
-  id: string;
-  email: string;
-  displayName: string;
-  isDemo: boolean;
+  id!: string;
+  email!: string;
+  displayName!: string;
+  isDemo!: boolean;
 }
 
 export class AuthResponseDto {
-  user: PublicUserDto;
-  accessToken: string;
+  user!: PublicUserDto;
+  accessToken!: string;
 }

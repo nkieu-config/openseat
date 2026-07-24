@@ -18,9 +18,9 @@ export class UpdateTeamMemberDto {
 }
 
 export class TeamMemberDto {
-  id: string;
-  email: string;
-  role: string;
-  linked: boolean;
-  createdAt: string;
+  id!: string;
+  email!: string;
+  role!: string;
+  linked!: boolean;
+  createdAt!: string;
 }
