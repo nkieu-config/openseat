@@ -34,6 +34,16 @@ function dayKey(date: Date): string {
 type OrderStamp = { createdAt: Date; totalSatang: number };
 type TicketStamp = { createdAt: Date };
 
+function earliestCreatedAt(
+  rows: TicketStamp[],
+  current: number | null,
+): number | null {
+  return rows.reduce<number | null>((earliest, row) => {
+    const stamp = row.createdAt.getTime();
+    return earliest === null || stamp < earliest ? stamp : earliest;
+  }, current);
+}
+
 @Injectable()
 export class DashboardService {
   constructor(
@@ -155,6 +165,7 @@ export class DashboardService {
       'manager',
     );
     const now = new Date();
+    const timelineStart = addDays(startOfDayUtc(now), -MAX_TIMELINE_DAYS);
 
     const [
       ticketTypes,
@@ -193,11 +204,19 @@ export class DashboardService {
         _sum: { totalSatang: true, refundedSatang: true },
       }),
       this.prisma.order.findMany({
-        where: { eventId, status: { in: PAID_ORDER_STATUSES } },
+        where: {
+          eventId,
+          status: { in: PAID_ORDER_STATUSES },
+          createdAt: { gte: timelineStart },
+        },
         select: { createdAt: true, totalSatang: true },
       }),
       this.prisma.ticket.findMany({
-        where: { eventId, status: { not: 'void' } },
+        where: {
+          eventId,
+          status: { not: 'void' },
+          createdAt: { gte: timelineStart },
+        },
         select: { createdAt: true },
       }),
       this.prisma.ticket.findMany({
@@ -321,12 +340,12 @@ export class DashboardService {
     paidOrders: OrderStamp[],
     tickets: TicketStamp[],
   ): TimelineBucket[] {
-    const stamps = [
-      ...paidOrders.map((order) => order.createdAt.getTime()),
-      ...tickets.map((ticket) => ticket.createdAt.getTime()),
-    ];
+    const earliestStamp = earliestCreatedAt(
+      tickets,
+      earliestCreatedAt(paidOrders, null),
+    );
     const earliest =
-      stamps.length > 0 ? new Date(Math.min(...stamps)) : eventCreatedAt;
+      earliestStamp === null ? eventCreatedAt : new Date(earliestStamp);
     const end = startOfDayUtc(now);
     let start = startOfDayUtc(earliest);
     if ((end.getTime() - start.getTime()) / DAY_MS > MAX_TIMELINE_DAYS) {
