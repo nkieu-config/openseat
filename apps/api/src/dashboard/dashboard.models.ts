@@ -64,7 +64,8 @@ export class TierStat {
   @Field(() => Float) priceSatang!: number;
   @Field(() => Int) quantity!: number;
   @Field(() => Int) remaining!: number;
-  @Field(() => Int) sold!: number;
+  @Field(() => Int) issued!: number;
+  @Field(() => Int) claimed!: number;
   @Field(() => Float) grossSatang!: number;
 }
 

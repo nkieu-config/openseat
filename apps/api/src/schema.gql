@@ -107,14 +107,15 @@ type SectionOccupancy {
 }
 
 type TierStat {
+  claimed: Int!
   grossSatang: Float!
   id: ID!
+  issued: Int!
   kind: String!
   name: String!
   priceSatang: Float!
   quantity: Int!
   remaining: Int!
-  sold: Int!
 }
 
 type TimelineBucket {

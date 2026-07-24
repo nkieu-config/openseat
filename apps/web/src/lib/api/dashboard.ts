@@ -37,7 +37,7 @@ const EVENT_DASHBOARD_QUERY = `query ($eventId: ID!) {
       ticketsCheckedIn liveHolds capacity sellThroughBp
     }
     timeline { day orders ticketsSold grossSatang }
-    tiers { id name kind priceSatang quantity remaining sold grossSatang }
+    tiers { id name kind priceSatang quantity remaining issued claimed grossSatang }
     sections { name capacity sold held available }
     myRole
   }

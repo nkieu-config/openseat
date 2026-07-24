@@ -169,6 +169,7 @@ export class DashboardService {
       ticketRows,
       soldSeatRows,
       heldSeatRows,
+      issuedByTierRows,
     ] = await Promise.all([
       this.prisma.ticketType.findMany({
         where: { eventId },
@@ -207,6 +208,11 @@ export class DashboardService {
         where: { eventId, expiresAt: { gt: now } },
         select: { seatId: true },
       }),
+      this.prisma.ticket.groupBy({
+        by: ['ticketTypeId'],
+        where: { eventId, status: { not: 'void' } },
+        _count: { _all: true },
+      }),
     ]);
 
     const capacity = ticketTypes.reduce((sum, tier) => sum + tier.quantity, 0);
@@ -224,8 +230,11 @@ export class DashboardService {
         capacity > 0 ? Math.round((ticketsSold / capacity) * 10000) : 0,
     };
 
+    const issuedByTier = new Map(
+      issuedByTierRows.map((row) => [row.ticketTypeId, row._count._all]),
+    );
     const tiers: TierStat[] = ticketTypes.map((tier) => {
-      const sold = tier.quantity - tier.remaining;
+      const issued = issuedByTier.get(tier.id) ?? 0;
       return {
         id: tier.id,
         name: tier.name,
@@ -233,8 +242,9 @@ export class DashboardService {
         priceSatang: tier.priceSatang,
         quantity: tier.quantity,
         remaining: tier.remaining,
-        sold,
-        grossSatang: sold * tier.priceSatang,
+        issued,
+        claimed: tier.quantity - tier.remaining,
+        grossSatang: issued * tier.priceSatang,
       };
     });
 

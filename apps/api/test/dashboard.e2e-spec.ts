@@ -13,7 +13,7 @@ const DASHBOARD_QUERY = `query ($id: ID!) {
   eventDashboard(eventId: $id) {
     event { title ticketsSold ticketsCheckedIn }
     totals { ticketsSold ticketsCheckedIn paidOrders sellThroughBp }
-    tiers { name sold }
+    tiers { name issued claimed grossSatang }
   }
 }`;
 
@@ -146,7 +146,12 @@ describe('Dashboard + check-in (e2e)', () => {
         eventDashboard: {
           event: { ticketsSold: number };
           totals: { ticketsSold: number; paidOrders: number };
-          tiers: { name: string; sold: number }[];
+          tiers: {
+            name: string;
+            issued: number;
+            claimed: number;
+            grossSatang: number;
+          }[];
         };
       };
     };
@@ -154,7 +159,12 @@ describe('Dashboard + check-in (e2e)', () => {
     expect(dash.event.ticketsSold).toBe(6);
     expect(dash.totals.ticketsSold).toBe(6);
     expect(dash.totals.paidOrders).toBe(1);
-    expect(dash.tiers[0]).toEqual({ name: 'Free GA', sold: 6 });
+    expect(dash.tiers[0]).toEqual({
+      name: 'Free GA',
+      issued: 6,
+      claimed: 6,
+      grossSatang: 0,
+    });
   });
 
   it('hides the dashboard from a non-owner', async () => {

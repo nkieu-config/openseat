@@ -88,7 +88,7 @@ export function DashboardReadout({
           <div className="flex flex-col gap-4">
             {tiers.map((tier) => {
               const ratio =
-                tier.quantity > 0 ? (tier.sold / tier.quantity) * 100 : 0;
+                tier.quantity > 0 ? (tier.claimed / tier.quantity) * 100 : 0;
               return (
                 <div key={tier.id} className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-2">
@@ -110,7 +110,10 @@ export function DashboardReadout({
                   </div>
                   <div className="flex justify-between font-mono text-[11px] tabular-nums text-muted-foreground">
                     <span>
-                      {tier.sold}/{tier.quantity} sold
+                      {tier.issued}/{tier.quantity} issued
+                      {tier.claimed > tier.issued
+                        ? ` · ${tier.claimed - tier.issued} in checkout`
+                        : ''}
                     </span>
                     <span>{formatBaht(tier.grossSatang)}</span>
                   </div>

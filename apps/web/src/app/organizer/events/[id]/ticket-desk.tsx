@@ -46,7 +46,7 @@ export function TicketDesk({
             <div className="min-w-0">
               <p className="font-medium">{tier.name}</p>
               <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
-                {tier.sold} issued · {tier.remaining} remaining
+                {tier.issued} issued · {tier.remaining} remaining
               </p>
             </div>
             <div className="flex items-end gap-2">
@@ -60,7 +60,7 @@ export function TicketDesk({
                 <Input
                   id={`quantity-${tier.id}`}
                   type="number"
-                  min={tier.sold}
+                  min={tier.claimed}
                   max={100000}
                   className="w-28 font-mono tabular-nums"
                   value={quantities[tier.id] ?? tier.quantity}

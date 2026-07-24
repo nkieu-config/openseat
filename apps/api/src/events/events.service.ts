@@ -174,10 +174,10 @@ export class EventsService {
             );
           }
         } else {
-          const sold = ticketType.quantity - ticketType.remaining;
-          if (dto.quantity < sold) {
+          const claimed = ticketType.quantity - ticketType.remaining;
+          if (dto.quantity < claimed) {
             throw new BadRequestException(
-              `Quantity cannot go below the ${sold} tickets already issued`,
+              `Quantity cannot go below the ${claimed} tickets already claimed`,
             );
           }
           remainingDelta = dto.quantity - ticketType.quantity;
