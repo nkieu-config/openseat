@@ -10,6 +10,7 @@ The vocabulary below is the project's source of truth for naming things — in c
 - **Section / Row / Seat** — the physical hierarchy. A seat is the unit of inventory for reserved seating.
 - **Price tier** — a named price level assigned to seats (e.g. VIP, Standard).
 - **GA (General Admission)** — untiered standing/zone tickets sold by quantity, not by seat.
+- **Claimed vs issued** — two counts against a price tier's `quantity`, never interchangeable. **Issued** is tickets that exist and are not void — the sales number, and what sell-through and gross are built from. **Claimed** is `quantity − remaining`, the capacity already committed — the floor a capacity change must not drop below. They diverge while money is in flight, and they diverge differently per kind: GA subtracts from `remaining` when the order is created, because that atomic subtraction is what stops overselling; seated subtracts only when payment succeeds and parks its in-flight seats in holds instead. So `claimed − issued` reads as "in checkout" for GA and is always zero for seated.
 
 ## Buying side
 
