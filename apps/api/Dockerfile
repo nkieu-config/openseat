@@ -28,7 +28,7 @@ RUN cd /out/node_modules/.pnpm && rm -rf \
 
 FROM build AS migrate
 WORKDIR /repo/apps/api
-ENTRYPOINT ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node dist/seed.js"]
+ENTRYPOINT ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node dist/scripts/seed.js"]
 
 FROM gcr.io/distroless/nodejs22-debian12:nonroot AS runtime
 ENV NODE_ENV=production

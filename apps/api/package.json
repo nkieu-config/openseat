@@ -8,10 +8,10 @@
   "scripts": {
     "build": "nest build",
     "db:generate": "prisma generate",
-    "openapi:dump": "nest build && node dist/dump-openapi.js",
+    "openapi:dump": "nest build && node dist/scripts/dump-openapi.js",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
-    "db:seed": "nest build && node dist/seed.js",
+    "db:seed": "nest build && node dist/scripts/seed.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "dev": "nest start --watch",

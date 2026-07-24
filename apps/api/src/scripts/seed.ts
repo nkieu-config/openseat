@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { randomBytes, randomUUID } from 'crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from './generated/prisma/client';
+import { PrismaClient } from '../generated/prisma/client';
 import { seedRefusalReason } from './seed-target';
 
 const prisma = new PrismaClient({
