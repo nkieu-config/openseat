@@ -57,49 +57,70 @@ export class DashboardService {
       },
     });
 
-    return Promise.all(
-      events.map(async (event): Promise<EventCard> => {
-        const [ticketsSold, ticketsCheckedIn, grossAgg] = await Promise.all([
-          this.prisma.ticket.count({
-            where: { eventId: event.id, status: { not: 'void' } },
-          }),
-          this.prisma.ticket.count({
-            where: { eventId: event.id, status: 'checked_in' },
-          }),
-          this.prisma.order.aggregate({
-            where: { eventId: event.id, status: { in: PAID_ORDER_STATUSES } },
-            _sum: { totalSatang: true, refundedSatang: true },
-          }),
-        ]);
-        const myRole =
-          event.organizerId === organizerId
-            ? 'owner'
-            : (event.team[0]?.role ?? 'staff');
-        const grossSatang =
-          myRole === 'staff'
-            ? null
-            : (grossAgg._sum.totalSatang ?? 0) -
-              (grossAgg._sum.refundedSatang ?? 0);
-        return {
-          id: event.id,
-          slug: event.slug,
-          title: event.title,
-          status: event.status,
-          venueName: event.venueName,
-          startsAt: event.startsAt,
-          isDemo: event.isDemo,
-          seated: event.seatMap !== null,
-          capacity: event.ticketTypes.reduce(
-            (sum, tier) => sum + tier.quantity,
-            0,
-          ),
-          ticketsSold,
-          ticketsCheckedIn,
-          grossSatang,
-          myRole,
-        };
+    const eventIds = events.map((event) => event.id);
+    if (eventIds.length === 0) {
+      return [];
+    }
+
+    const [soldRows, checkedInRows, grossRows] = await Promise.all([
+      this.prisma.ticket.groupBy({
+        by: ['eventId'],
+        where: { eventId: { in: eventIds }, status: { not: 'void' } },
+        _count: { _all: true },
       }),
+      this.prisma.ticket.groupBy({
+        by: ['eventId'],
+        where: { eventId: { in: eventIds }, status: 'checked_in' },
+        _count: { _all: true },
+      }),
+      this.prisma.order.groupBy({
+        by: ['eventId'],
+        where: {
+          eventId: { in: eventIds },
+          status: { in: PAID_ORDER_STATUSES },
+        },
+        _sum: { totalSatang: true, refundedSatang: true },
+      }),
+    ]);
+
+    const soldByEvent = new Map(
+      soldRows.map((row) => [row.eventId, row._count._all]),
     );
+    const checkedInByEvent = new Map(
+      checkedInRows.map((row) => [row.eventId, row._count._all]),
+    );
+    const grossByEvent = new Map(
+      grossRows.map((row) => [
+        row.eventId,
+        (row._sum.totalSatang ?? 0) - (row._sum.refundedSatang ?? 0),
+      ]),
+    );
+
+    return events.map((event): EventCard => {
+      const myRole =
+        event.organizerId === organizerId
+          ? 'owner'
+          : (event.team[0]?.role ?? 'staff');
+      return {
+        id: event.id,
+        slug: event.slug,
+        title: event.title,
+        status: event.status,
+        venueName: event.venueName,
+        startsAt: event.startsAt,
+        isDemo: event.isDemo,
+        seated: event.seatMap !== null,
+        capacity: event.ticketTypes.reduce(
+          (sum, tier) => sum + tier.quantity,
+          0,
+        ),
+        ticketsSold: soldByEvent.get(event.id) ?? 0,
+        ticketsCheckedIn: checkedInByEvent.get(event.id) ?? 0,
+        grossSatang:
+          myRole === 'staff' ? null : (grossByEvent.get(event.id) ?? 0),
+        myRole,
+      };
+    });
   }
 
   async eventSummary(eventId: string, userId: string): Promise<EventSummary> {
