@@ -16,7 +16,7 @@ import {
   getAdmissionToken,
   isAdmissionValid,
   subscribeAdmission,
-} from "@/lib/admission";
+} from "@/lib/api/admission";
 import { RsvpCard } from "./rsvp-card";
 
 function useAdmitted(eventId: string): boolean {

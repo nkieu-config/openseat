@@ -1,4 +1,4 @@
-import { apiBaseUrl, getAccessToken, refreshSession } from "./api";
+import { apiBaseUrl, getAccessToken, refreshSession } from "./client";
 
 export type GraphqlErrorItem = {
   message: string;

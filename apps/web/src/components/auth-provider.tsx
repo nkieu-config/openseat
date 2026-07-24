@@ -9,7 +9,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { api, apiErrorMessage, refreshSession, setAccessToken } from "@/lib/api";
+import { api, apiErrorMessage, refreshSession, setAccessToken } from "@/lib/api/client";
 
 type AuthContextValue = {
   user: PublicUser | null;

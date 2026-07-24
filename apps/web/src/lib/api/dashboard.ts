@@ -5,7 +5,7 @@ import type {
   EventSummary,
   OrderRow,
 } from "@openseat/contracts/graphql";
-import { apiBaseUrl, getAccessToken, refreshSession } from "./api";
+import { apiBaseUrl, getAccessToken, refreshSession } from "./client";
 import { gqlRequest } from "./graphql";
 
 export type {

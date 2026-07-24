@@ -14,7 +14,7 @@ import { ConsolePanel } from "@/components/console/panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api, apiErrorMessage } from "@/lib/api";
+import { api, apiErrorMessage } from "@/lib/api/client";
 
 type Section = {
   id: string;

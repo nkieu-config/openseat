@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
-import { isForbiddenError, isNotFoundError } from "@/lib/graphql";
+import { isForbiddenError, isNotFoundError } from "@/lib/api/graphql";
 
 export type ConsoleGateState =
   | "loading"

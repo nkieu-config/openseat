@@ -1,4 +1,4 @@
-import { api, apiErrorMessage } from "./api";
+import { api, apiErrorMessage } from "./client";
 
 export type CheckinOutcome = "checked_in" | "already_checked_in";
 

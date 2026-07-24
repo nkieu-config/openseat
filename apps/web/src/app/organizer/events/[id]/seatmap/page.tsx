@@ -10,7 +10,7 @@ import {
   ConsoleLoadFailed,
 } from "@/components/console/gate-notice";
 import { Button } from "@/components/ui/button";
-import { fetchEventDashboard } from "@/lib/dashboard";
+import { fetchEventDashboard } from "@/lib/api/dashboard";
 import { useConsoleGate } from "@/lib/use-console-gate";
 import { SeatMapEditor } from "./seat-map-editor";
 

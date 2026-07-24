@@ -1,6 +1,6 @@
 import type { EventDetail } from "@openseat/contracts";
 import { ImageResponse } from "next/og";
-import { apiBaseUrl } from "@/lib/api";
+import { apiBaseUrl } from "@/lib/api/client";
 import { formatEventDate } from "@/lib/format";
 
 export const size = { width: 1200, height: 630 };

@@ -11,14 +11,14 @@ import {
   getAdmissionToken,
   isAdmissionValid,
   setAdmissionToken,
-} from "@/lib/admission";
-import { api } from "@/lib/api";
+} from "@/lib/api/admission";
+import { api } from "@/lib/api/client";
 import {
   getVisitorId,
   joinQueue,
   openQueueStream,
   simulateCrowd,
-} from "@/lib/gate";
+} from "@/lib/api/gate";
 
 type EventInfo = { id: string; title: string };
 

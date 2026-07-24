@@ -20,8 +20,8 @@ import { TelemetryStat } from "@/components/console/telemetry";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { checkInTicket, type CheckinResult } from "@/lib/checkin";
-import { fetchEventSummary } from "@/lib/dashboard";
+import { checkInTicket, type CheckinResult } from "@/lib/api/checkin";
+import { fetchEventSummary } from "@/lib/api/dashboard";
 import { useConsoleGate } from "@/lib/use-console-gate";
 import { cn } from "@/lib/utils";
 

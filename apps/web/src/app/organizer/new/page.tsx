@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { api, apiErrorMessage } from "@/lib/api";
+import { api, apiErrorMessage } from "@/lib/api/client";
 
 type TicketTypeRow = { name: string; quantity: number; priceBaht: number };
 

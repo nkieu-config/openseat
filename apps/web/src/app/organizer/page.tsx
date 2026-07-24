@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchOrganizerEvents, type EventCard } from "@/lib/dashboard";
+import { fetchOrganizerEvents, type EventCard } from "@/lib/api/dashboard";
 import { formatBaht, formatEventDate } from "@/lib/format";
 import { useConsoleGate } from "@/lib/use-console-gate";
 

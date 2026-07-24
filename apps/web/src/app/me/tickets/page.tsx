@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/empty-state";
 import { TicketCard } from "@/components/ticket-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api } from "@/lib/api";
+import { api } from "@/lib/api/client";
 import { formatEventDate } from "@/lib/format";
 
 export default function MyTicketsPage() {

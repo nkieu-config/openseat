@@ -11,8 +11,8 @@ import {
 } from "@/components/console/gate-notice";
 import { ConsolePanel, SignalLamp } from "@/components/console/panel";
 import { Button } from "@/components/ui/button";
-import { api, apiErrorMessage } from "@/lib/api";
-import { fetchEventOrders, type OrderRow } from "@/lib/dashboard";
+import { api, apiErrorMessage } from "@/lib/api/client";
+import { fetchEventOrders, type OrderRow } from "@/lib/api/dashboard";
 import { formatBaht } from "@/lib/format";
 import { useConsoleGate } from "@/lib/use-console-gate";
 import { cn } from "@/lib/utils";

@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { api, apiErrorMessage } from "@/lib/api";
+import { api, apiErrorMessage } from "@/lib/api/client";
 import { formatPrice } from "@/lib/format";
 
 export function RsvpCard({ event }: { event: EventDetail }) {

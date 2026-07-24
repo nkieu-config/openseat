@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api } from "@/lib/api";
+import { api } from "@/lib/api/client";
 import { formatEventDate, formatPrice } from "@/lib/format";
 
 function OrderSkeleton() {
@@ -120,7 +120,7 @@ function OrderView() {
     }
     let cancelled = false;
     let disconnect: (() => void) | null = null;
-    void import("@/lib/realtime").then(({ createEventSocket }) => {
+    void import("@/lib/api/realtime").then(({ createEventSocket }) => {
       if (cancelled) {
         return;
       }

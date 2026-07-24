@@ -23,13 +23,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api, apiErrorMessage } from "@/lib/api";
+import { api, apiErrorMessage } from "@/lib/api/client";
 import {
   downloadAttendeesCsv,
   fetchEventDashboard,
   fetchEventSummary,
   type EventDashboard,
-} from "@/lib/dashboard";
+} from "@/lib/api/dashboard";
 import {
   formatBaht,
   formatDayLabel,
