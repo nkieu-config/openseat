@@ -225,6 +225,7 @@ model Order {
   @@index([buyerUserId])
   @@index([buyerEmail])
   @@index([status, expiresAt])
+  @@index([eventId, status])
   @@map("orders")
 }
 
@@ -311,7 +312,7 @@ model Ticket {
   seat       Seat?      @relation(fields: [seatId], references: [id])
   refund     Refund?    @relation(fields: [refundId], references: [id])
 
-  @@index([eventId])
+  @@index([eventId, status])
   @@index([orderId])
   @@index([refundId])
   @@map("tickets")
