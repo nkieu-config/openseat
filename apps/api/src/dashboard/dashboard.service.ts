@@ -59,11 +59,11 @@ export class DashboardService {
       orderBy: { createdAt: 'desc' },
       include: {
         ticketTypes: { select: { quantity: true } },
-        seatMap: { select: { id: true } },
         team: {
           where: { userId: organizerId },
           select: { role: true },
         },
+        _count: { select: { seats: true } },
       },
     });
 
@@ -119,7 +119,7 @@ export class DashboardService {
         venueName: event.venueName,
         startsAt: event.startsAt,
         isDemo: event.isDemo,
-        seated: event.seatMap !== null,
+        seated: event._count.seats > 0,
         capacity: event.ticketTypes.reduce(
           (sum, tier) => sum + tier.quantity,
           0,
