@@ -105,6 +105,8 @@ jobs:
       - run: pnpm --filter api db:generate
       - run: pnpm --filter api db:migrate:deploy
       - run: pnpm --filter api test:e2e
+      - name: Verify the GraphQL schema is in sync
+        run: git diff --exit-code apps/api/src/schema.gql
 
   browser:
     runs-on: ubuntu-latest
