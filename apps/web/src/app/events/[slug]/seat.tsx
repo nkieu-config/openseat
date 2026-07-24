@@ -1,5 +1,6 @@
 import type { SeatInfo } from '@openseat/contracts';
 import { CELL } from '@/lib/seat-map-viewport';
+import { formatSeatLabel } from '@/lib/format';
 
 export const seatFill: Record<string, string> = {
   available: 'fill-seat-available',
@@ -7,10 +8,6 @@ export const seatFill: Record<string, string> = {
   sold: 'fill-seat-sold',
   mine: 'fill-seat-selected',
 };
-
-export function seatLabel(seat: SeatInfo): string {
-  return `${seat.section} ${seat.rowLabel}${seat.number}`;
-}
 
 export function Seat({
   seat,
@@ -24,7 +21,7 @@ export function Seat({
   onToggle: (seat: SeatInfo) => void;
 }) {
   const fill = seat.mine ? seatFill.mine : seatFill[seat.status];
-  const description = `${seatLabel(seat)} — ${seat.mine ? 'yours' : seat.status}`;
+  const description = `${formatSeatLabel(seat)} — ${seat.mine ? 'yours' : seat.status}`;
 
   return (
     <g>

@@ -1,3 +1,5 @@
+import type { SeatInfo } from "@openseat/contracts";
+
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -29,6 +31,10 @@ export function formatPercentBp(basisPoints: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
   })}%`;
+}
+
+export function formatSeatLabel(seat: SeatInfo): string {
+  return `${seat.section} ${seat.rowLabel}${seat.number}`;
 }
 
 export function formatDayLabel(iso: string | Date): string {
