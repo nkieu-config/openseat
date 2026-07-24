@@ -12,7 +12,7 @@ import {
 import { ConsolePanel, SignalLamp } from "@/components/console/panel";
 import { Button } from "@/components/ui/button";
 import { api, apiErrorMessage } from "@/lib/api";
-import { fetchEventOrders, type EventOrder } from "@/lib/dashboard";
+import { fetchEventOrders, type OrderRow } from "@/lib/dashboard";
 import { formatBaht } from "@/lib/format";
 import { useConsoleGate } from "@/lib/use-console-gate";
 import { cn } from "@/lib/utils";
@@ -35,7 +35,7 @@ export default function OrdersConsolePage() {
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
   const load = useCallback(() => fetchEventOrders(eventId), [eventId]);
-  const gate = useConsoleGate<EventOrder[]>(
+  const gate = useConsoleGate<OrderRow[]>(
     `/organizer/events/${eventId}/orders`,
     load,
   );
@@ -47,19 +47,19 @@ export default function OrdersConsolePage() {
     setSelected((current) => ({ ...current, [ticketId]: !current[ticketId] }));
   }
 
-  function selectedTicketIds(order: EventOrder): string[] {
+  function selectedTicketIds(order: OrderRow): string[] {
     return order.tickets
       .filter((ticket) => ticket.status === "issued" && selected[ticket.id])
       .map((ticket) => ticket.id);
   }
 
-  function selectedAmount(order: EventOrder): number {
+  function selectedAmount(order: OrderRow): number {
     return order.tickets
       .filter((ticket) => ticket.status === "issued" && selected[ticket.id])
       .reduce((total, ticket) => total + ticket.priceSatang, 0);
   }
 
-  async function refund(order: EventOrder) {
+  async function refund(order: OrderRow) {
     const ticketIds = selectedTicketIds(order);
     if (ticketIds.length === 0) {
       return;
@@ -97,7 +97,7 @@ export default function OrdersConsolePage() {
     }
   }
 
-  async function retry(order: EventOrder, refundId: string) {
+  async function retry(order: OrderRow, refundId: string) {
     setBusyOrderId(order.id);
     try {
       const { data, error, response } = await api.POST(

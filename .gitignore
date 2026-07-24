@@ -9,6 +9,7 @@ coverage/
 .turbo/
 apps/api/src/generated/
 packages/contracts/src/api.ts
+packages/contracts/src/graphql.ts
 
 .env
 .env.*

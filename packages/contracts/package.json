@@ -8,15 +8,22 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./graphql": {
+      "types": "./dist/graphql.d.ts",
+      "default": "./dist/graphql.js"
     }
   },
   "scripts": {
-    "generate": "openapi-typescript openapi.json -o src/api.ts --default-non-nullable false",
+    "generate": "openapi-typescript openapi.json -o src/api.ts --default-non-nullable false && graphql-codegen --config codegen.yml",
     "build": "pnpm generate && tsc -p tsconfig.json",
     "typecheck": "pnpm generate && tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^7.2.0",
+    "@graphql-codegen/typescript": "^6.1.0",
     "@openseat/config": "workspace:*",
+    "graphql": "^16.14.2",
     "openapi-typescript": "^7.13.0",
     "typescript": "^5.9.3"
   }

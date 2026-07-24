@@ -1,114 +1,26 @@
+import type {
+  Attendee,
+  EventCard,
+  EventDashboard,
+  EventSummary,
+  OrderRow,
+} from "@openseat/contracts/graphql";
 import { apiBaseUrl, getAccessToken, refreshSession } from "./api";
 import { gqlRequest } from "./graphql";
 
-export type EventCard = {
-  id: string;
-  slug: string;
-  title: string;
-  status: string;
-  venueName: string;
-  startsAt: string;
-  isDemo: boolean;
-  seated: boolean;
-  capacity: number;
-  ticketsSold: number;
-  ticketsCheckedIn: number;
-  grossSatang: number | null;
-  myRole: string;
-};
-
-export type EventSummary = {
-  id: string;
-  title: string;
-  venueName: string;
-  startsAt: string;
-  status: string;
-  ticketsSold: number;
-  ticketsCheckedIn: number;
-  myRole: string;
-};
-
-export type DashboardTotals = {
-  grossSatang: number;
-  paidOrders: number;
-  pendingOrders: number;
-  ticketsSold: number;
-  ticketsCheckedIn: number;
-  liveHolds: number;
-  capacity: number;
-  sellThroughBp: number;
-};
-
-export type TimelineBucket = {
-  day: string;
-  orders: number;
-  ticketsSold: number;
-  grossSatang: number;
-};
-
-export type TierStat = {
-  id: string;
-  name: string;
-  kind: string;
-  priceSatang: number;
-  quantity: number;
-  remaining: number;
-  sold: number;
-  grossSatang: number;
-};
-
-export type SectionOccupancy = {
-  name: string;
-  capacity: number;
-  sold: number;
-  held: number;
-  available: number;
-};
-
-export type EventDashboard = {
-  event: EventCard;
-  totals: DashboardTotals;
-  timeline: TimelineBucket[];
-  tiers: TierStat[];
-  sections: SectionOccupancy[];
-  myRole: string;
-};
-
-export type Attendee = {
-  ticketId: string;
-  name: string;
-  email: string;
-  ticketType: string;
-  seat: string | null;
-  status: string;
-  checkedInAt: string | null;
-};
-
-export type OrderTicketRow = {
-  id: string;
-  ticketType: string;
-  seat: string | null;
-  status: string;
-  priceSatang: number;
-};
-
-export type RefundRow = {
-  id: string;
-  status: string;
-  amountSatang: number;
-};
-
-export type EventOrder = {
-  id: string;
-  buyerName: string;
-  buyerEmail: string;
-  status: string;
-  totalSatang: number;
-  refundedSatang: number;
-  createdAt: string;
-  tickets: OrderTicketRow[];
-  refunds: RefundRow[];
-};
+export type {
+  Attendee,
+  DashboardTotals,
+  EventCard,
+  EventDashboard,
+  EventSummary,
+  OrderRow,
+  OrderTicketRow,
+  RefundRow,
+  SectionOccupancy,
+  TierStat,
+  TimelineBucket,
+} from "@openseat/contracts/graphql";
 
 const EVENT_CARD_FIELDS = `
   id slug title status venueName startsAt isDemo seated
@@ -192,8 +104,8 @@ const EVENT_ORDERS_QUERY = `query ($eventId: ID!, $limit: Int) {
 export async function fetchEventOrders(
   eventId: string,
   limit = 200,
-): Promise<EventOrder[]> {
-  const data = await gqlRequest<{ eventOrders: EventOrder[] }>(
+): Promise<OrderRow[]> {
+  const data = await gqlRequest<{ eventOrders: OrderRow[] }>(
     EVENT_ORDERS_QUERY,
     { eventId, limit },
   );

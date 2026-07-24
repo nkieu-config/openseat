@@ -15,12 +15,21 @@
       ],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
+    "@openseat/contracts#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/apps/api/src/schema.gql"],
+      "outputs": ["dist/**"]
+    },
     "lint": {},
     "typecheck": {
       "dependsOn": ["^build", "db:generate"]
     },
     "web#typecheck": {
       "dependsOn": ["build"]
+    },
+    "@openseat/contracts#typecheck": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/apps/api/src/schema.gql"]
     },
     "test": {
       "dependsOn": ["^build", "db:generate"]
