@@ -1,6 +1,7 @@
 {
-  "extends": "@openseat/config/tsconfig.base.json",
+  "extends": "@openseat/config/tsconfig.node.json",
   "compilerOptions": {
+    "noUncheckedIndexedAccess": true,
     "outDir": "dist",
     "rootDir": "src"
   },
